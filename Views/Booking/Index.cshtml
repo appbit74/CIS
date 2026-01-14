@@ -1,0 +1,153 @@
+﻿@{
+    ViewData["Title"] = "ปฏิทินการจองห้องประชุม";
+}
+
+<h1><i class="fas fa-calendar-alt"></i> ปฏิทินการจองห้องประชุม</h1>
+<hr />
+
+<div id="calendar"></div>
+
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-clock"></i> จองห้องประชุม</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookingForm">
+                    @Html.AntiForgeryToken() <div class="mb-3">
+                        <label class="form-label">หัวข้อการประชุม</label>
+                        <input type="text" class="form-control" id="evtTitle" required placeholder="เช่น ประชุมทีมประจำสัปดาห์">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">ห้องประชุม</label>
+                        <select class="form-select" id="evtRoomId" asp-items="ViewBag.MeetingRooms" required>
+                            <option value="">-- เลือกห้อง --</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">เริ่ม</label>
+                            <input type="datetime-local" class="form-control" id="evtStart" required>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">สิ้นสุด</label>
+                            <input type="datetime-local" class="form-control" id="evtEnd" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-primary" id="btnSaveBooking">ยืนยันการจอง</button>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                locale: 'th',
+                events: '/Booking/GetEvents',
+                selectable: true,
+
+                select: function(info) {
+                    let startStr = toLocalISOString(info.start);
+                    let endStr = toLocalISOString(info.end);
+
+                    document.getElementById('evtStart').value = startStr;
+                    document.getElementById('evtEnd').value = endStr;
+
+                    bookingModal.show();
+                },
+
+                eventClick: function(info) {
+                    Swal.fire({
+                        title: info.event.title,
+                        html: `<b>เวลา:</b> ${info.event.start.toLocaleString()} - ${info.event.end ? info.event.end.toLocaleString() : ''}<br>` +
+                              `<b>รายละเอียด:</b> ${info.event.extendedProps.description}`,
+                        icon: 'info'
+                    });
+                }
+            });
+
+            calendar.render();
+
+            // --- ฟังก์ชันปุ่มบันทึก (แก้ไขแล้ว) ---
+            document.getElementById('btnSaveBooking').addEventListener('click', function() {
+                var bookingData = {
+                    Title: document.getElementById('evtTitle').value,
+                    MeetingRoomId: document.getElementById('evtRoomId').value,
+                    StartTime: document.getElementById('evtStart').value,
+                    EndTime: document.getElementById('evtEnd').value
+                };
+
+                if(!bookingData.Title || !bookingData.MeetingRoomId) {
+                    Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอกหัวข้อและเลือกห้องด้วยนะจ๊ะ', 'warning');
+                    return;
+                }
+
+                var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                fetch('/Booking/Create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(bookingData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 1. ซ่อน Modal
+                        bookingModal.hide();
+
+                        // 2. ล้างฟอร์ม
+                        document.getElementById('bookingForm').reset();
+
+                        // 3. *** แจ้งเตือน และ รีโหลดหน้าจอเมื่อกด OK ***
+                        Swal.fire({
+                            title: 'เรียบร้อย!',
+                            text: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'ตกลง'
+                        }).then((result) => {
+                            // ไม่ว่าจะกดตกลง หรือ ปิด popup... เราจะรีโหลดเสมอ
+                            location.reload();
+                        });
+
+                    } else {
+                        Swal.fire('อุ๊ปส์!', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    Swal.fire('Error', 'เกิดข้อผิดพลาดบางอย่าง', 'error');
+                });
+            });
+
+            function toLocalISOString(date) {
+                const offset = date.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(date - offset)).toISOString().slice(0, 16);
+                return localISOTime;
+            }
+        });
+    </script>
+}

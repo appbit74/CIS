@@ -1,0 +1,200 @@
+﻿@model CIS.ViewModels.EditUserViewModel
+
+@{
+    ViewData["Title"] = $"แก้ไขผู้ใช้: {Model.Username}";
+    bool isSuperAdmin = ViewBag.IsSuperAdmin ?? false;
+}
+
+<style>
+    .group-checkbox-list {
+        max-height: 400px; /* เพิ่มความสูงให้เห็นเยอะขึ้น */
+        overflow-y: auto;
+        border: 1px solid #ced4da;
+        border-radius: .25rem;
+        padding: 10px;
+        background-color: #fff; /* พื้นขาวให้อ่านง่าย */
+    }
+
+        .group-checkbox-list .form-check {
+            margin-bottom: 8px; /* เพิ่มระยะห่างบรรทัด */
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0; /* เส้นคั่นบางๆ */
+        }
+
+    .form-check-input:disabled + .form-check-label {
+        color: #6c757d;
+        cursor: not-allowed;
+    }
+
+    .card-header-custom {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+        font-weight: bold;
+        color: #495057;
+    }
+</style>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="text-danger mb-0"><i class="fas fa-user-edit"></i> แก้ไขผู้ใช้: @Model.Username</h1>
+    <a asp-action="Index" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> กลับไปหน้ารายการ</a>
+</div>
+<hr />
+
+<form asp-action="EditUser">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Username" />
+
+    @if (!isSuperAdmin)
+    {
+        <input type="hidden" asp-for="SelectedOU" />
+    }
+
+    <div class="row">
+
+        <div class="col-md-7">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header card-header-custom">
+                    <i class="fas fa-id-card"></i> ข้อมูลทั่วไปและสังกัด
+                </div>
+                <div class="card-body">
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label text-muted small">Username (แก้ไขไม่ได้)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-user"></i></span>
+                                <input asp-for="Username" class="form-control fw-bold" readonly />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="form-floating">
+                                <input asp-for="FirstName" class="form-control" placeholder="FirstName" />
+                                <label asp-for="FirstName"></label>
+                                <span asp-validation-for="FirstName" class="text-danger"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-floating">
+                                <input asp-for="LastName" class="form-control" placeholder="LastName" />
+                                <label asp-for="LastName"></label>
+                                <span asp-validation-for="LastName" class="text-danger"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-floating mb-3">
+                        <input asp-for="Email" class="form-control" placeholder="Email" />
+                        <label asp-for="Email"></label>
+                        <span asp-validation-for="Email" class="text-danger"></span>
+                    </div>
+
+                    <div class="card bg-light border-0 p-3 mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" asp-for="IsEnabled">
+                            <label class="form-check-label fw-bold" asp-for="IsEnabled">สถานะบัญชี (เปิดใช้งาน)</label>
+                        </div>
+                    </div>
+
+                    @if (isSuperAdmin)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="SelectedOU" class="form-label fw-bold text-primary">
+                                <i class="fas fa-sitemap"></i> สังกัด / แผนก (Organizational Unit)
+                            </label>
+                            <select asp-for="SelectedOU" asp-items="@Model.OUList" class="form-select border-primary">
+                            </select>
+                            <span asp-validation-for="SelectedOU" class="text-danger"></span>
+                            <div class="form-text text-muted">
+                                การเปลี่ยนสังกัด จะทำให้ผู้ใช้ถูกย้ายไปยัง Folder ใหม่ใน AD ทันที
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="mb-3">
+                            <label class="form-label text-muted">สังกัดปัจจุบัน (OU)</label>
+                            <input type="text" class="form-control bg-light" value="@Model.SelectedOU" readonly />
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </div>
+
+        @if (isSuperAdmin)
+        {
+            <div class="col-md-5">
+                <div class="card shadow-sm mb-4 h-100">
+                    <div class="card-header card-header-custom text-white bg-secondary">
+                        <i class="fas fa-shield-alt"></i> สิทธิ์และกลุ่ม (Security Groups)
+                    </div>
+                    <div class="card-body bg-light">
+                        <p class="small text-muted mb-2">
+                            เลือกกลุ่มเพื่อกำหนดสิทธิ์การเข้าถึงระบบต่างๆ
+                        </p>
+
+                        <div class="group-checkbox-list">
+                            @for (int i = 0; i < Model.GroupMemberships.Count; i++)
+                            {
+                                bool isDomainUsersGroup = string.Equals(Model.GroupMemberships[i].SamAccountName, "Domain Users", StringComparison.OrdinalIgnoreCase);
+
+                                <div class="form-check">
+                                    <input type="hidden" asp-for="GroupMemberships[i].SamAccountName" />
+                                    <input type="hidden" asp-for="GroupMemberships[i].DisplayName" />
+
+                                    <input asp-for="GroupMemberships[i].IsSelected" class="form-check-input" disabled="@isDomainUsersGroup" />
+
+                                    <label asp-for="GroupMemberships[i].IsSelected" class="form-check-label w-100">
+                                        <span class="d-block fw-bold text-dark">
+                                            @Model.GroupMemberships[i].DisplayName
+                                        </span>
+                                        <small class="text-muted" style="font-size: 0.8em;">
+                                            (@Model.GroupMemberships[i].SamAccountName)
+                                        </small>
+
+                                        @if (isDomainUsersGroup)
+                                        {
+                                            <span class="badge bg-secondary float-end" style="font-size: 0.7em;">Default</span>
+                                        }
+                                    </label>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mt-3 p-2 bg-white border rounded">
+                            <small class="text-danger d-block">
+                                <i class="fas fa-info-circle"></i> หมายเหตุ:
+                            </small>
+                            <small class="text-muted d-block">
+                                - <b>CIS_Admins</b>: ผู้ดูแลระบบสูงสุด
+                            </small>
+                            <small class="text-muted d-block">
+                                - <b>Room_Managers</b>: ผู้อนุมัติห้องประชุม
+                            </small>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        }
+
+    </div> <div class="card shadow-sm border-0 mt-3">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <span class="text-muted">ตรวจสอบข้อมูลให้ถูกต้องก่อนบันทึก</span>
+            <div>
+                <a asp-action="Index" class="btn btn-light me-2">ยกเลิก</a>
+                <button type="submit" class="btn btn-warning px-4 fw-bold">
+                    <i class="fas fa-save"></i> บันทึกการแก้ไข
+                </button>
+            </div>
+        </div>
+    </div>
+
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

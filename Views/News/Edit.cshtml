@@ -1,0 +1,123 @@
+﻿@model CIS.Models.NewsArticle
+
+@{
+    ViewData["Title"] = "แก้ไขข่าว";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+
+<h1>แก้ไขข่าว</h1>
+<hr />
+<div class="row">
+    <div class="col-md-12">
+        <form asp-action="Edit" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="form-group mb-3">
+                <label asp-for="Title" class="control-label">หัวข้อข่าว</label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <label asp-for="Content" class="control-label">เนื้อหา</label>
+                <textarea asp-for="Content" class="form-control" id="ContentEditor" rows="15"></textarea>
+                <span asp-validation-for="Content" class="text-danger"></span>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="control-label">ไฟล์แนบที่มีอยู่ (ติ๊กเพื่อลบ):</label>
+                @if (Model.Attachments != null && Model.Attachments.Any())
+                {
+                    <ul class="list-group">
+                        @foreach (var attachment in Model.Attachments)
+                        {
+                            <li class="list-group-item">
+                                <input type="checkbox" name="attachmentsToDelete" value="@attachment.Id" class="form-check-input me-2" />
+                                <a href="@Url.Content(attachment.StoredFilePath)" download="@attachment.OriginalFileName">
+                                    <i class="fas fa-file-download"></i> @attachment.OriginalFileName
+                                </a>
+                                <small class="text-muted">(ขนาด: @((attachment.FileSizeInBytes / 1024.0).ToString("N2")) KB)</small>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">ไม่มีไฟล์แนบ</p>
+                }
+            </div>
+
+            <div class="form-group mb-3">
+                <label for="newAttachments" class="control-label">เพิ่มไฟล์แนบใหม่ (PDF, DOCX, JPG, PNG)</label>
+                <input type="file" name="newAttachments" id="newAttachments" class="form-control" multiple />
+            </div>
+
+            <div class="form-group mb-3">
+                <label asp-for="PublishedDate" class="control-label">วันที่เผยแพร่</label>
+                <input asp-for="PublishedDate" class="form-control" />
+                <span asp-validation-for="PublishedDate" class="text-danger"></span>
+            </div>
+            <div class="form-group mb-3">
+                <label asp-for="Author" class="control-label">ผู้เขียน</label>
+                <input asp-for="Author" class="form-control" readonly />
+                <span asp-validation-for="Author" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <button type="submit" name="submitButton" value="Draft" class="btn btn-secondary">
+                    <i class="fas fa-save"></i> บันทึกแบบร่าง
+                </button>
+                <button type="submit" name="submitButton" value="Publish" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i> เผยแพร่
+                </button>
+                <a asp-action="Index" class="btn btn-link">ยกเลิก</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    <script>
+        // (JavaScript ของ Summernote ทั้งหมดเหมือนเดิม 100%)
+        $(document).ready(function() {
+            $('#ContentEditor').summernote({
+                placeholder: 'แก้ไขเนื้อหาข่าวที่นี่นะจ๊ะ...',
+                height: 300,
+                fontNames: ['Sarabun', 'Arial', 'Arial Black', 'Comic Sans MS', 'Courier New', 'Helvetica', 'Impact', 'Tahoma', 'Times New Roman', 'Verdana'],
+                fontNamesIgnoreCheck: ['Sarabun'],
+                toolbar: [
+                    ['style', ['style', 'clear']],
+                    ['font', ['bold', 'italic', 'underline', 'fontname']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'picture', 'video']],
+                    ['view', ['fullscreen', 'codeview', 'help']]
+                ],
+                callbacks: {
+                    onImageUpload: function(files) {
+                        uploadImage(files[0]);
+                    }
+                }
+            });
+            function uploadImage(file) {
+                let formData = new FormData();
+                formData.append("file", file);
+                fetch('/News/UploadImage', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    $('#ContentEditor').summernote('insertImage', data.url);
+                })
+                .catch(error => console.error('Error uploading image:', error));
+            }
+        });
+    </script>
+}

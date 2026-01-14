@@ -1,0 +1,257 @@
+﻿@using CIS.ViewModels
+@model HomeDashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<style>
+    /* ปรับแต่ง Tab ให้ดูสวยงาม */
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: bold;
+    }
+
+        .nav-tabs .nav-link.active {
+            color: #0d6efd; /* สีฟ้า Bootstrap */
+            border-top: 3px solid #0d6efd;
+        }
+
+    /* ให้ปฏิทินมีความสูงพอดีๆ */
+    .fc {
+        font-size: 0.85em;
+    }
+
+    /* CSS สำหรับปุ่ม AppLauncher (เพิ่มใหม่) */
+    .app-btn {
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+
+        .app-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
+            border-color: #0d6efd;
+            background-color: #f8f9fa;
+            z-index: 10;
+        }
+
+    .app-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+</style>
+
+<div class="row">
+    @* =========================================================================
+       ส่วนที่ 2: ข่าวสาร (ปรับแก้ Model เป็น Model.NewsArticles)
+       ========================================================================= *@
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-newspaper"></i> ข่าวสารล่าสุด</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.NewsArticles != null && Model.NewsArticles.Any())
+                {
+                    <ul class="list-group list-group-flush">
+                        @foreach (var item in Model.NewsArticles)
+                        {
+                            <li class="list-group-item px-0">
+                                <a asp-controller="News" asp-action="Details" asp-route-id="@item.Id" class="text-decoration-none fw-bold">
+                                    @item.Title
+                                </a>
+                                <br />
+                                <small class="text-muted">
+                                    <i class="far fa-clock"></i> @item.PublishedDate.ToString("d MMM yyyy")
+                                    | <i class="far fa-user"></i> @item.Author
+                                </small>
+                            </li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted text-center mt-3">ยังไม่มีข่าวสารในขณะนี้</p>
+                }
+            </div>
+
+            @if (User.IsInRole(@"CRIMCAD\News_Admins"))
+            {
+                <div class="card-footer bg-white border-top-0">
+                    <a asp-controller="News" asp-action="Create" class="btn btn-sm btn-outline-primary w-100">
+                        <i class="fas fa-plus"></i> เพิ่มข่าวใหม่
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+
+    @* =========================================================================
+       ส่วนที่ 3: ปฏิทิน (Code เดิม ไม่ต้องแก้)
+       ========================================================================= *@
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white p-0 pt-2 px-2">
+                <ul class="nav nav-tabs card-header-tabs" id="resourceTabs" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="room-tab" data-bs-toggle="tab" data-bs-target="#room-pane" type="button">
+                            <i class="fas fa-calendar-check text-success"></i> ห้องประชุม
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="car-tab" data-bs-toggle="tab" data-bs-target="#car-pane" type="button">
+                            <i class="fas fa-car-side text-warning"></i> ยานพาหนะ
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="card-body p-2">
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="room-pane">
+                        <div class="d-flex justify-content-end mb-2">
+                            <a asp-controller="Booking" asp-action="Index" class="btn btn-sm btn-outline-success">
+                                ไปหน้าจองห้อง <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                        <div id="roomCalendar"></div>
+                    </div>
+
+                    <div class="tab-pane fade" id="car-pane">
+                        <div class="d-flex justify-content-end mb-2">
+                            <a asp-controller="VehicleBooking" asp-action="Index" class="btn btn-sm btn-outline-warning text-dark">
+                                ไปหน้าจองรถ <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </div>
+                        <div id="carCalendar"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* =========================================================================
+   ส่วนที่ 1: AppLauncher (ระบบบริการอิเล็กทรอนิกส์) - เพิ่มใหม่ตรงนี้
+   ========================================================================= *@
+@if (Model.LauncherGroups != null && Model.LauncherGroups.Any())
+{
+    <div class="mb-5">
+        <div class="d-flex align-items-center mb-3">
+            <h4 class="mb-0 text-primary"><i class="fas fa-th"></i> ระบบบริการอิเล็กทรอนิกส์</h4>
+            <div class="flex-grow-1 ms-3 border-bottom"></div>
+        </div>
+
+        @foreach (var group in Model.LauncherGroups)
+        {
+            if (group.LauncherLinks != null && group.LauncherLinks.Any())
+            {
+                <div class="mb-3">
+                    <small class="text-muted fw-bold text-uppercase mb-2 d-block">@group.GroupName</small>
+                    <div class="row g-2">
+                        @foreach (var link in group.LauncherLinks)
+                        {
+                            // --- Logic คำนวณสีตัวอักษร (ขาว/ดำ) ตามความเข้มของพื้นหลัง ---
+                            string hexColor = link.ColorClass ?? "#0d6efd"; // ค่า Default
+                            string textColor = "#ffffff"; // Default ตัวหนังสือสีขาว
+                            
+                            // ถ้าเป็น Hex Code ให้คำนวณความสว่าง (Brightness)
+                            if (hexColor.StartsWith("#") && hexColor.Length == 7)
+                            {
+                                try
+                                {
+                                    var r = Convert.ToInt32(hexColor.Substring(1, 2), 16);
+                                    var g = Convert.ToInt32(hexColor.Substring(3, 2), 16);
+                                    var b = Convert.ToInt32(hexColor.Substring(5, 2), 16);
+                                    // สูตร YIQ: ถ้าค่าความสว่าง > 128 ให้ใช้ตัวหนังสือสีดำ
+                                    textColor = ((r * 299) + (g * 587) + (b * 114)) / 1000 > 128 ? "#000000" : "#ffffff";
+                                }
+                                catch { /* ถ้าโค้ดสีผิดพลาด ให้ใช้ค่า Default */ }
+                            }
+                            // --------------------------------------------------------
+                            <div class="col-6 col-sm-4 col-md-3 col-lg-2">
+                                <a asp-controller="Home" asp-action="OpenApp" asp-route-id="@link.Id" target="_blank"
+                                   class="app-btn btn w-100 h-100 p-3 d-flex flex-column align-items-center justify-content-center text-decoration-none rounded-3 border-0 shadow-sm"
+                                   style="background-color: @hexColor; color: @textColor;">
+                                    <div class="app-icon mb-2">
+                                        @if (!string.IsNullOrEmpty(link.IconClass))
+                                        {
+                                            <i class="@link.IconClass"></i>
+                                        }
+                                        else
+                                        {
+
+                                            <i class="fas fa-link"></i>
+                                        }
+                                    </div>
+
+                                    <span class="small fw-bold text-center text-wrap" style="line-height: 1.2;">@link.Title</span>
+
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+}
+
+
+
+@section Scripts {
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+
+            // --- Helper: สร้าง Config สำหรับ Mini Calendar ---
+            function createMiniCalendarConfig(elementId, apiUrl) {
+                return {
+                    initialView: 'listWeek',
+                    headerToolbar: {
+                        left: 'prev,next',
+                        center: 'title',
+                        right: ''
+                    },
+                    locale: 'th',
+                    height: 380,
+                    events: apiUrl,
+                    eventClick: function(info) {
+                        Swal.fire({
+                            title: info.event.title,
+                            html: `<b>เวลา:</b> ${info.event.start.toLocaleString()} - ${info.event.end ? info.event.end.toLocaleString() : ''}<br><br>` +
+                                  `<div style='text-align:left; white-space: pre-line;'>${info.event.extendedProps.description}</div>`,
+                            icon: 'info'
+                        });
+                    },
+                    noEventsContent: 'ไม่มีรายการจองในช่วงนี้'
+                };
+            }
+
+            // 1. สร้างปฏิทินห้องประชุม
+            var roomEl = document.getElementById('roomCalendar');
+            var roomCalendar = new FullCalendar.Calendar(roomEl, createMiniCalendarConfig(roomEl, '/Booking/GetEvents'));
+            roomCalendar.render();
+
+            // 2. สร้างปฏิทินยานพาหนะ
+            var carEl = document.getElementById('carCalendar');
+            var carCalendar = new FullCalendar.Calendar(carEl, createMiniCalendarConfig(carEl, '/VehicleBooking/GetEvents'));
+
+            // 3. *** แก้บั๊ก FullCalendar ใน Tab ***
+            var tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
+            tabEl.forEach(function(el) {
+                el.addEventListener('shown.bs.tab', function (event) {
+                    if (event.target.id === 'car-tab') {
+                        carCalendar.render();
+                    }
+                    if (event.target.id === 'room-tab') {
+                        roomCalendar.render();
+                    }
+                });
+            });
+        });
+    </script>
+}

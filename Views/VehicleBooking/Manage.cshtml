@@ -1,0 +1,154 @@
+﻿@model IEnumerable<CIS.Models.VehicleBooking>
+
+@{
+    ViewData["Title"] = "อนุมัติการจองยานพาหนะ";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+}
+
+<h1><i class="fas fa-tasks"></i> อนุมัติการจองยานพาหนะ</h1>
+<hr />
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="bookingTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>สถานะ</th>
+                        <th>รถยนต์</th>
+                        <th>ภารกิจ / สถานที่</th>
+                        <th>รายละเอียด</th>
+                        <th>วันเวลา</th>
+                        <th>ผู้จอง</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>
+                                @if (item.Status == CIS.Models.BookingStatus.Pending)
+                                {
+                                    <span class="badge bg-warning text-dark">รออนุมัติ</span>
+                                }
+                                else if (item.Status == CIS.Models.BookingStatus.Approved)
+                                {
+                                    <span class="badge bg-success">อนุมัติ</span>
+                                }
+                                else if (item.Status == CIS.Models.BookingStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">ยกเลิก</span>
+                                }
+                            </td>
+                            <td>
+                                <strong>@item.Vehicle.LicensePlate</strong><br />
+                                <small class="text-muted">@item.Vehicle.Brand @item.Vehicle.Model</small>
+                            </td>
+                            <td>
+                                <strong>@item.Title</strong><br />
+                                <small class="text-primary"><i class="fas fa-map-marker-alt"></i> @item.Destination</small>
+                            </td>
+                            <td>
+                                <i class="fas fa-users"></i> @item.PassengerCount คน<br />
+                                @if (item.IsDriverRequired)
+                                {
+                                    <span class="text-danger fw-bold"><i class="fas fa-user-tie"></i> ขอคนขับ</span>
+                                }
+                                else
+                                {
+                                    <span class="text-success"><i class="fas fa-steering-wheel"></i> ขับเอง</span>
+                                }
+                            </td>
+                            <td>
+                                <span class="d-block">@item.StartTime.ToString("d MMM yy HH:mm")</span>
+                                <span class="d-block text-muted small">ถึง</span>
+                                <span class="d-block">@item.EndTime.ToString("d MMM yy HH:mm")</span>
+                            </td>
+                            <td>@item.BookedBy</td>
+                            <td>
+                                @if (item.Status == CIS.Models.BookingStatus.Pending)
+                                {
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-success btn-update-status" data-id="@item.Id" data-status="Approved" title="อนุมัติ">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger btn-update-status" data-id="@item.Id" data-status="Rejected" title="ไม่อนุมัติ">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#bookingTable').DataTable({
+                "order": [],
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th-TH.json" }
+            });
+
+            // Logic อนุมัติ/ไม่อนุมัติ
+             $('#bookingTable').on('click', '.btn-update-status', function() {
+                var id = $(this).data('id');
+                var statusStr = $(this).data('status');
+                var statusInt = statusStr === 'Approved' ? 1 : 2;
+
+                var actionText = statusStr === 'Approved' ? 'อนุมัติ' : 'ปฏิเสธ';
+                var color = statusStr === 'Approved' ? '#198754' : '#dc3545';
+
+                Swal.fire({
+                    title: `ยืนยันการ${actionText}?`,
+                    text: `คุณต้องการ${actionText}รายการนี้ใช่หรือไม่?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: color,
+                    confirmButtonText: `ใช่, ${actionText}เลย`,
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: '/VehicleBooking/UpdateStatus',
+                            type: 'POST',
+                            data: {
+                                id: id,
+                                status: statusInt,
+                                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                            },
+                            success: function(res) {
+                                if(res.success) {
+                                    Swal.fire('เรียบร้อย', res.message, 'success').then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', res.message, 'error');
+                                }
+                            },
+                            error: function() {
+                                Swal.fire('Error', 'เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

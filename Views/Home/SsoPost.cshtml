@@ -1,0 +1,30 @@
+﻿@model CIS.ViewModels.SsoPostViewModel
+
+@{
+    Layout = null; // ไม่เอา Layout หลัก (Header/Footer)
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting...</title>
+</head>
+<body>
+    <div style="text-align:center; margin-top: 20%;">
+        <h3>กำลังเข้าสู่ระบบปลายทาง...</h3>
+        <p>กรุณารอสักครู่ (Please wait...)</p>
+
+        <form id="ssoForm" action="@Model.TargetUrl" method="POST">
+            @foreach (var item in Model.Payload)
+            {
+                <input type="hidden" name="@item.Key" value="@item.Value" />
+            }
+        </form>
+    </div>
+
+    <script>
+        // สั่งให้ Browser กด Submit Form ทันทีที่โหลดเสร็จ
+        document.getElementById("ssoForm").submit();
+    </script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+﻿@{
+    ViewData["Title"] = "ปฏิทินการจองยานพาหนะ";
+}
+
+<h1><i class="fas fa-car-side"></i> ปฏิทินการจองยานพาหนะ</h1>
+<hr />
+
+<div id="calendar"></div>
+
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-road"></i> จองยานพาหนะ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookingForm">
+                    @Html.AntiForgeryToken()
+
+                    <div class="mb-3">
+                        <label class="form-label">เลือกรถ</label>
+                        <select class="form-select" id="evtVehicleId" asp-items="ViewBag.Vehicles" required>
+                            <option value="">-- กรุณาเลือกรถ --</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ชื่อภารกิจ/จุดประสงค์</label>
+                        <input type="text" class="form-control" id="evtTitle" required placeholder="เช่น ไปราชการ, รับรองแขก">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">สถานที่ปลายทาง (Destination)</label>
+                        <input type="text" class="form-control" id="evtDestination" required placeholder="เช่น กระทรวงพาณิชย์, จ.เชียงใหม่">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">จำนวนผู้โดยสาร</label>
+                            <input type="number" class="form-control" id="evtPassenger" min="1" value="1" required>
+                        </div>
+                        <div class="col-6 mb-3 d-flex align-items-center">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="evtDriver">
+                                <label class="form-check-label fw-bold" for="evtDriver">
+                                    ต้องการคนขับรถ
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">ออกเดินทาง</label>
+                            <input type="datetime-local" class="form-control" id="evtStart" required>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">กลับถึงสำนักงาน</label>
+                            <input type="datetime-local" class="form-control" id="evtEnd" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                <button type="button" class="btn btn-warning" id="btnSaveBooking">ยืนยันการจอง</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var calendarEl = document.getElementById('calendar');
+            var bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                locale: 'th',
+                events: '/VehicleBooking/GetEvents', // ชี้ไปที่ Controller ของรถ
+                selectable: true,
+
+                select: function(info) {
+                    let startStr = toLocalISOString(info.start);
+                    let endStr = toLocalISOString(info.end);
+                    document.getElementById('evtStart').value = startStr;
+                    document.getElementById('evtEnd').value = endStr;
+                    bookingModal.show();
+                },
+
+                // (ใน FullCalendar Config)
+                eventClick: function(info) {
+                    // 1. เช็คว่ามีสิทธิ์แก้ไขไหม (ส่งมาจาก Controller)
+                    var isEditable = info.event.extendedProps.isEditable;
+
+                    // 2. เตรียมปุ่มแก้ไข (ถ้ามีสิทธิ์)
+                    var editButtonHtml = '';
+                    if (isEditable) {
+                        editButtonHtml = `<a href="/VehicleBooking/Edit/${info.event.id}" class="btn btn-sm btn-warning mt-2"><i class="fas fa-edit"></i> แก้ไขการจอง</a>`;
+                    }
+
+                    Swal.fire({
+                        title: info.event.title,
+                        html: `<b>เวลา:</b> ${info.event.start.toLocaleString()} - ${info.event.end ? info.event.end.toLocaleString() : ''}<br><br>` +
+                              `<div style='text-align:left; white-space: pre-line;'>${info.event.extendedProps.description}</div>` +
+                              `<div class='mt-3 text-center'>${editButtonHtml}</div>`, // ใส่ปุ่มตรงนี้
+                        icon: 'info',
+                        showConfirmButton: false, // ซ่อนปุ่ม OK เดิม
+                        showCloseButton: true     // แสดงปุ่ม X มุมขวาบนแทน
+                    });
+                }
+            });
+
+            calendar.render();
+
+            // ปุ่มบันทึก
+            document.getElementById('btnSaveBooking').addEventListener('click', function() {
+                var bookingData = {
+                    VehicleId: document.getElementById('evtVehicleId').value,
+                    Title: document.getElementById('evtTitle').value,
+                    Destination: document.getElementById('evtDestination').value,
+                    PassengerCount: parseInt(document.getElementById('evtPassenger').value) || 1,
+                    IsDriverRequired: document.getElementById('evtDriver').checked,
+                    StartTime: document.getElementById('evtStart').value,
+                    EndTime: document.getElementById('evtEnd').value
+                };
+
+                // Validation
+                if(!bookingData.VehicleId || !bookingData.Title || !bookingData.Destination) {
+                    Swal.fire('ข้อมูลไม่ครบ', 'กรุณาเลือกรถ, ระบุภารกิจ และสถานที่ปลายทาง', 'warning');
+                    return;
+                }
+
+                var token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                fetch('/VehicleBooking/Create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify(bookingData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        bookingModal.hide();
+                        document.getElementById('bookingForm').reset();
+                        Swal.fire({
+                            title: 'เรียบร้อย!',
+                            text: data.message,
+                            icon: 'success',
+                            confirmButtonText: 'ตกลง'
+                        }).then(() => location.reload()); // Reload เพื่อโชว์แถบสี
+                    } else {
+                        Swal.fire('จองไม่ได้', data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    Swal.fire('Error', 'เกิดข้อผิดพลาด', 'error');
+                });
+            });
+
+            function toLocalISOString(date) {
+                const offset = date.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(date - offset)).toISOString().slice(0, 16);
+                return localISOTime;
+            }
+        });
+    </script>
+}

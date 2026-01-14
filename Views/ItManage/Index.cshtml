@@ -1,0 +1,117 @@
+﻿@using CIS.Models
+@{
+    ViewData["Title"] = "IT Admin Console";
+
+    // รับค่าจาก Controller (ถ้าไม่มีให้เป็น List ว่างๆ กัน Error)
+    var pendingList = ViewBag.PendingList as List<EmployeeProfile> ?? new List<EmployeeProfile>();
+    var resignedList = ViewBag.ResignedList as List<EmployeeProfile> ?? new List<EmployeeProfile>();
+}
+
+<div class="container mt-4">
+    <h2><i class="fas fa-tools"></i> IT Admin Console</h2>
+    <div class="alert alert-info">
+        หน้านี้สำหรับ IT Admin เพื่อจัดการ User ใน Active Directory (AD) ตามที่ HR ส่งเรื่องมา
+    </div>
+    <hr />
+
+    <div class="card mb-4 border-success shadow-sm">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-user-plus"></i> พนักงานใหม่ (รอสร้าง User AD)</h5>
+        </div>
+        <div class="card-body">
+            @if (pendingList.Any())
+            {
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>วันที่ลงทะเบียน</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>ตำแหน่ง</th>
+                            <th>Username ที่จองไว้</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in pendingList)
+                        {
+                            <tr>
+                                <td>@item.CreatedDate.ToString("dd/MM/yyyy")</td>
+                                <td>@item.FirstNameTH @item.LastNameTH</td>
+                                <td>@item.Position <br /><small class="text-muted">@item.Division</small></td>
+                                <td class="fw-bold text-success">@item.GeneratedUsername</td>
+                                <td>
+                                    <form asp-action="SyncToAd" method="post">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-success btn-sm">
+                                            <i class="fas fa-sync"></i> สร้าง User AD
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="text-center py-3 text-muted">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i><br>
+                    ไม่มีรายการพนักงานใหม่ค้างดำเนินการ
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card mb-4 border-danger shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0"><i class="fas fa-user-times"></i> พนักงานแจ้งออก (รอระงับสิทธิ์ AD)</h5>
+        </div>
+        <div class="card-body">
+            @if (resignedList.Any())
+            {
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> รายชื่อด้านล่างคือพนักงานที่ HR แจ้งพ้นสภาพแล้ว
+                    กรุณากดปุ่ม <b>"ระงับสิทธิ์ (Disable)"</b> เพื่อปิดการใช้งาน Account ใน AD
+                </div>
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>Username (AD)</th>
+                            <th>ส่วนงาน</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in resignedList)
+                        {
+                            <tr>
+                                <td>
+                                    @item.FirstNameTH @item.LastNameTH
+                                    <span class="badge bg-secondary">Resigned</span>
+                                </td>
+                                <td class="text-danger fw-bold">@item.GeneratedUsername</td>
+                                <td>@item.Division</td>
+                                <td>
+                                    <form asp-action="DisableAdUser" method="post" onsubmit="return confirm('ยืนยันที่จะระงับสิทธิ์ (Disable) บัญชีนี้ใน AD ใช่หรือไม่?');">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-danger btn-sm">
+                                            <i class="fas fa-ban"></i> ระงับสิทธิ์ (Disable)
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="text-center py-3 text-muted">
+                    <i class="fas fa-smile fa-2x mb-2"></i><br>
+                    ไม่มีรายการแจ้งพ้นสภาพ
+                </div>
+            }
+        </div>
+    </div>
+</div>

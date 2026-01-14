@@ -1,0 +1,41 @@
+﻿@model CIS.Models.MeetingRoom
+
+@{
+    ViewData["Title"] = "รายละเอียดห้องประชุม";
+}
+
+<h1>รายละเอียดห้องประชุม</h1>
+
+<div>
+    <h4>@Html.DisplayFor(model => model.Name)</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Location)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.Location)</dd>
+
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Capacity)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.Capacity) คน</dd>
+
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Color)</dt>
+        <dd class="col-sm-10">
+            <span style="display:inline-block; width:30px; height:30px; background-color:@Model.Color; border:1px solid #ccc;"></span>
+        </dd>
+
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.IsActive)</dt>
+        <dd class="col-sm-10">
+            @if (Model.IsActive)
+            {
+                <span class="badge bg-success">ใช้งานปกติ</span>
+            }
+            else
+            {
+
+                <span class="badge bg-secondary">ปิดปรับปรุง</span>
+            }
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model?.Id" class="btn btn-warning">แก้ไข</a>
+    <a asp-action="Index" class="btn btn-secondary">กลับไปที่รายการ</a>
+</div>

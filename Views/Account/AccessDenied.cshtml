@@ -1,0 +1,13 @@
+﻿@{
+    ViewData["Title"] = "Access Denied";
+}
+
+<header>
+    <h1 class="text-danger">Access Denied</h1>
+    <p class="text-danger">คุณไม่มีสิทธิ์ในการเข้าถึงหน้านี้นะจ๊ะ</p>
+    <p>
+        คุณล็อกอินในชื่อ @User.Identity?.Name, แต่คุณอาจจะไม่มี Role (AD Group) ที่ถูกต้อง
+        (เช่น `CRIMCAD\News_Admins`)
+    </p>
+    <a asp-action="Index" asp-controller="Home" class="btn btn-primary">กลับหน้าหลัก</a>
+</header>

@@ -1,0 +1,23 @@
+﻿@model CIS.Models.Vehicle
+
+@{
+    ViewData["Title"] = "ลบรถ";
+}
+
+<h1>ลบรถ</h1>
+
+<h3>คุณแน่ใจหรือไม่ว่าต้องการลบรถคันนี้?</h3>
+<div>
+    <h4>@Model.LicensePlate</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">ยี่ห้อ/รุ่น</dt>
+        <dd class="col-sm-10">@Model.Brand @Model.Model</dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="ยืนยันลบ" class="btn btn-danger" />
+        <a asp-action="Index" class="btn btn-secondary">ยกเลิก</a>
+    </form>
+</div>

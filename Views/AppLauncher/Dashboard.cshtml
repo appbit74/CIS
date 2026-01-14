@@ -1,0 +1,67 @@
+﻿@model IEnumerable<CIS.Models.LauncherGroup>
+
+@{
+    ViewData["Title"] = "ระบบบริการอิเล็กทรอนิกส์";
+}
+
+<div class="container py-4">
+    <div class="text-center mb-5">
+        <h1 class="display-5 fw-bold text-primary">CIS Application Launcher</h1>
+        <p class="lead text-muted">ศูนย์รวมระบบสารสนเทศ ศาลยุติธรรม</p>
+    </div>
+
+    @foreach (var group in Model)
+    {
+        // ตรวจสอบว่าในกลุ่มมีลิ้งค์ไหม ถ้าไม่มีไม่แสดง
+        if (group.LauncherLinks != null && group.LauncherLinks.Any())
+        {
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-light border-bottom-0">
+                    <h4 class="mb-0 text-dark"><i class="fas fa-layer-group text-secondary me-2"></i>@group.GroupName</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        @foreach (var link in group.LauncherLinks)
+                        {
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <a asp-controller="AppLauncher" asp-action="OpenApp" asp-route-id="@link.Id" target="_blank"
+                                   class="btn btn-outline-primary w-100 h-100 p-3 d-flex flex-column align-items-center justify-content-center text-decoration-none shadow-hover transition-300">
+
+                                    <div class="display-6 mb-2">
+                                        @if (!string.IsNullOrEmpty(link.IconClass))
+                                        {
+                                            <i class="@link.IconClass"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-link"></i>
+                                        }
+                                    </div>
+                                    <span class="fw-bold">@link.Title</span>
+
+                                </a>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<style>
+    .shadow-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15) !important;
+        background-color: #0d6efd; /* สี Primary */
+        color: white !important;
+    }
+
+        .shadow-hover:hover .text-warning {
+            color: #ffc107 !important;
+        }
+
+    .transition-300 {
+        transition: all 0.3s ease;
+    }
+</style>

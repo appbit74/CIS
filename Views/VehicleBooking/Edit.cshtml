@@ -1,0 +1,75 @@
+﻿@model CIS.Models.VehicleBooking
+
+@{
+    ViewData["Title"] = "แก้ไขการจอง";
+}
+
+<h1><i class="fas fa-edit"></i> แก้ไขการจองยานพาหนะ</h1>
+<div class="alert alert-warning">
+    <i class="fas fa-info-circle"></i> การแก้ไขข้อมูล จะทำให้สถานะกลับไปเป็น <b>"รออนุมัติ"</b> ใหม่
+</div>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Edit">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="Id" />
+
+            <div class="mb-3">
+                <label class="form-label">เลือกรถ</label>
+                <select asp-for="VehicleId" class="form-select" asp-items="ViewBag.Vehicles"></select>
+                <span asp-validation-for="VehicleId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Title" class="form-label">ภารกิจ</label>
+                <input asp-for="Title" class="form-control" />
+                <span asp-validation-for="Title" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Destination" class="form-label">ปลายทาง</label>
+                <input asp-for="Destination" class="form-control" />
+                <span asp-validation-for="Destination" class="text-danger"></span>
+            </div>
+
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label asp-for="PassengerCount" class="form-label"></label>
+                    <input asp-for="PassengerCount" class="form-control" min="1" />
+                </div>
+                <div class="col-6 mb-3 d-flex align-items-center">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" asp-for="IsDriverRequired" />
+                        <label class="form-check-label" asp-for="IsDriverRequired"></label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label asp-for="StartTime" class="form-label"></label>
+                    <input asp-for="StartTime" class="form-control" />
+                    <span asp-validation-for="StartTime" class="text-danger"></span>
+                </div>
+                <div class="col-6 mb-3">
+                    <label asp-for="EndTime" class="form-label"></label>
+                    <input asp-for="EndTime" class="form-control" />
+                    <span asp-validation-for="EndTime" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="form-group mt-3">
+                <button type="submit" class="btn btn-warning"><i class="fas fa-save"></i> บันทึกการแก้ไข</button>
+                <a asp-action="Index" class="btn btn-secondary">ยกเลิก</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

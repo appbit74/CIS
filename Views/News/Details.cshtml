@@ -1,0 +1,108 @@
+﻿@model CIS.ViewModels.NewsDetailViewModel
+@{
+    ViewData["Title"] = "รายละเอียดข่าว";
+}
+
+<style>
+    .attachment-preview {
+        max-width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        margin-bottom: 15px;
+    }
+    .pdf-preview {
+        width: 100%;
+        height: 800px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+</style>
+
+<h1>รายละเอียด</h1>
+
+<div>
+    <h4>@Html.DisplayFor(model => model.News.Title)</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.News.Content)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.Raw(Model.News.Content)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.News.PublishedDate)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.News.PublishedDate)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.News.Author)
+        </dt>
+        <dd class="col-sm-10">
+            @Html.DisplayFor(model => model.News.Author)
+        </dd>
+        <dt class="col-sm-2">
+            @Html.DisplayNameFor(model => model.News.IsPublished)
+        </dt>
+        <dd class="col-sm-10">
+            @if (Model.News.IsPublished)
+            {
+                <span class="badge bg-success">เผยแพร่แล้ว</span>
+            }
+            else
+            {
+                <span class="badge bg-secondary">แบบร่าง</span>
+            }
+        </dd>
+
+        <dt class="col-sm-2">
+            ไฟล์แนบ:
+        </dt>
+        <dd class="col-sm-10">
+            @if (Model.ProcessedAttachments != null && Model.ProcessedAttachments.Any())
+            {
+                @foreach (var attachment in Model.ProcessedAttachments)
+                {
+                    var fileUrl = Url.Content(attachment.StoredFilePath);
+
+                    <div class="mb-3">
+                        <hr>
+                        <h5>
+                            <i class="fas fa-file-alt"></i> @attachment.OriginalFileName
+                            <small class="text-muted">(ขนาด: @((attachment.FileSizeInBytes / 1024.0).ToString("N2")) KB)</small>
+                        </h5>
+
+                        @if (attachment.Extension == ".jpg" || attachment.Extension == ".jpeg" || attachment.Extension == ".png" || attachment.Extension == ".gif")
+                        {
+                            <img src="@fileUrl" alt="@attachment.OriginalFileName" class="attachment-preview" />
+                        }
+                        else if (attachment.Extension == ".pdf")
+                        {
+                            <iframe src="@fileUrl" class="pdf-preview">
+                                <p>Browser ของคุณไม่รองรับ PDF, <a href="@fileUrl" download="@attachment.OriginalFileName">ดาวน์โหลด PDF</a></p>
+                            </iframe>
+                        }
+                        else
+                        {
+                            <a href="@fileUrl" download="@attachment.OriginalFileName" class="btn btn-secondary">
+                                <i class="fas fa-file-download"></i> ดาวน์โหลด @attachment.OriginalFileName
+                            </a>
+                        }
+                    </div>
+                }
+            }
+            else
+            {
+                <span class="text-muted">ไม่มีไฟล์แนบ</span>
+            }
+        </dd>
+    </dl>
+</div>
+<div>
+    @if (User.IsInRole(@"CRIMCAD\News_Admins"))
+    {
+        <a asp-action="Edit" asp-route-id="@Model.News.Id" class="btn btn-warning">แก้ไข</a>
+    }
+    <a asp-action="Index" class="btn btn-secondary">กลับไปที่รายการ</a>
+</div>

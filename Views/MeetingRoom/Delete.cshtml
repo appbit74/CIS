@@ -1,0 +1,23 @@
+﻿@model CIS.Models.MeetingRoom
+
+@{
+    ViewData["Title"] = "ลบห้องประชุม";
+}
+
+<h1>ลบห้องประชุม</h1>
+
+<h3>คุณแน่ใจหรือไม่ว่าต้องการลบห้องประชุมนี้?</h3>
+<div>
+    <h4>@Html.DisplayFor(model => model.Name)</h4>
+    <hr />
+    <dl class="row">
+        <dt class="col-sm-2">@Html.DisplayNameFor(model => model.Location)</dt>
+        <dd class="col-sm-10">@Html.DisplayFor(model => model.Location)</dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <input type="submit" value="ยืนยันลบ" class="btn btn-danger" />
+        <a asp-action="Index" class="btn btn-secondary">ยกเลิก</a>
+    </form>
+</div>

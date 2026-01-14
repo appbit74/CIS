@@ -1,0 +1,54 @@
+﻿@model IEnumerable<CIS.Models.Vehicle>
+
+@{
+    ViewData["Title"] = "จัดการยานพาหนะ";
+}
+
+<h1><i class="fas fa-car"></i> จัดการยานพาหนะ</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-primary"><i class="fas fa-plus"></i> เพิ่มรถใหม่</a>
+</p>
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>@Html.DisplayNameFor(model => model.LicensePlate)</th>
+            <th>รถยนต์</th>
+            <th>@Html.DisplayNameFor(model => model.CarType)</th>
+            <th>@Html.DisplayNameFor(model => model.SeatCount)</th>
+            <th>@Html.DisplayNameFor(model => model.CalendarColor)</th>
+            <th>@Html.DisplayNameFor(model => model.IsActive)</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td class="fw-bold text-primary">@Html.DisplayFor(modelItem => item.LicensePlate)</td>
+                <td>@item.Brand @item.Model</td>
+                <td>@Html.DisplayFor(modelItem => item.CarType)</td>
+                <td>@Html.DisplayFor(modelItem => item.SeatCount) ที่นั่ง</td>
+                <td>
+                    <span style="display:inline-block; width:20px; height:20px; background-color:@item.CalendarColor; border:1px solid #ccc; vertical-align:middle; border-radius: 50%;"></span>
+                </td>
+                <td>
+                    @if (item.IsActive)
+                    {
+                        <span class="badge bg-success">ใช้งาน</span>
+                    }
+                    else
+                    {
+
+                        <span class="badge bg-secondary">ส่งซ่อม/งดใช้</span>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">แก้ไข</a> |
+                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">ดู</a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">ลบ</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

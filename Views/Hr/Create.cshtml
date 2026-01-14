@@ -1,0 +1,279 @@
+﻿@model CIS.Models.EmployeeProfile
+
+@{
+    ViewData["Title"] = "ลงทะเบียนพนักงานใหม่";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1><i class="fas fa-id-card"></i> ลงทะเบียนพนักงานใหม่</h1>
+
+    <div class="d-flex gap-2">
+        <button onclick="openSmartCardAgent()" class="btn btn-outline-primary">
+            🖥️ เปิดโปรแกรม Agent
+        </button>
+
+        <button type="button" class="btn btn-primary btn-lg" id="btnReadCard">
+            <i class="fas fa-microchip"></i> อ่านข้อมูลจากบัตร
+        </button>
+    </div>
+</div>
+
+<div class="alert alert-info shadow-sm">
+    <i class="fas fa-info-circle"></i>
+    <span id="instructionText">ขั้นตอน: 1.กดเปิดโปรแกรม Agent > 2.เสียบบัตรประชาชน > 3.กดปุ่ม "อ่านข้อมูลจากบัตร"</span>
+</div>
+<div id="statusMessage" class="fw-bold text-primary mb-3"></div>
+<hr />
+
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <form asp-action="Create" class="card shadow-sm p-4">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <h5 class="text-primary border-bottom pb-2 mb-3">1. ข้อมูลส่วนตัว</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="CitizenId" class="form-label">เลขบัตรประชาชน</label>
+                    <input asp-for="CitizenId" class="form-control" id="CitizenId" placeholder="เลข 13 หลัก" />
+                    <span asp-validation-for="CitizenId" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="DateOfBirth" class="form-label">วันเกิด</label>
+                    <input asp-for="DateOfBirth" type="date" class="form-control" id="DateOfBirth" />
+                    <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Title" class="form-label">คำนำหน้าชื่อ</label>
+                    <input asp-for="Title" class="form-control" id="Title" placeholder="ระบุ หรือ อ่านจากบัตร" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="FirstNameTH" class="form-label">ชื่อ (ไทย)</label>
+                    <input asp-for="FirstNameTH" class="form-control" id="FirstNameTH" />
+                    <span asp-validation-for="FirstNameTH" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="LastNameTH" class="form-label">นามสกุล (ไทย)</label>
+                    <input asp-for="LastNameTH" class="form-control" id="LastNameTH" />
+                    <span asp-validation-for="LastNameTH" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="FirstNameEN" class="form-label">ชื่อ (อังกฤษ)</label>
+                    <input asp-for="FirstNameEN" class="form-control" id="FirstNameEN" placeholder="English First Name" />
+                    <span asp-validation-for="FirstNameEN" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="LastNameEN" class="form-label">นามสกุล (อังกฤษ)</label>
+                    <input asp-for="LastNameEN" class="form-control" id="LastNameEN" placeholder="English Last Name" />
+                    <span asp-validation-for="LastNameEN" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PhoneNumber" class="form-label">เบอร์โทรศัพท์</label>
+                    <input asp-for="PhoneNumber" class="form-control" id="PhoneNumber" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PersonalEmail" class="form-label">E-mail</label>
+                    <input asp-for="PersonalEmail" class="form-control" id="PersonalEmail" />
+                    <span asp-validation-for="PersonalEmail" class="text-danger"></span>
+                </div>
+            </div>
+
+            <h5 class="text-primary border-bottom pb-2 mb-3 mt-4">2. ข้อมูลตำแหน่งและหน่วยงาน</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="PositionLevel" class="form-label">ระดับตำแหน่ง</label>
+                    <select asp-for="PositionLevel" class="form-select" asp-items="Html.GetEnumSelectList<CIS.Models.PositionLevel>()"></select>
+                    <span asp-validation-for="PositionLevel" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-8 mb-3">
+                    <label asp-for="PositionId" class="form-label">ตำแหน่ง (Position)</label>
+
+                    <select asp-for="PositionId" class="form-select" asp-items="ViewBag.PositionList">
+                        <option value="">-- กรุณาเลือกตำแหน่ง --</option>
+                    </select>
+
+                    <span asp-validation-for="PositionId" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Division" class="form-label">ส่วนงาน (Division) <span class="text-danger">*</span></label>
+
+                    <select asp-for="Division" class="form-select" asp-items="ViewBag.DivisionList" id="Division">
+                        <option value="">-- กรุณาเลือกส่วนงาน --</option>
+                    </select>
+
+                    <span asp-validation-for="Division" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Section" class="form-label">หน่วยงานย่อย (Section) <span class="text-danger">*</span></label>
+
+                    <select asp-for="Section" class="form-select" asp-items="ViewBag.SectionList" id="Section">
+                        <option value="">-- กรุณาเลือกงาน/แผนก --</option>
+                    </select>
+
+                    <span asp-validation-for="Section" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <button type="submit" class="btn btn-lg btn-success px-5">
+                    <i class="fas fa-save"></i> บันทึกข้อมูล
+                </button>
+                <a asp-action="Index" class="btn btn-lg btn-secondary px-5">กลับ</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        // ---------------------------------------------------------
+        // 1. ฟังก์ชันแปลงวันที่ (สำคัญมาก! แก้ไขจุดนี้)
+        // ---------------------------------------------------------
+               // ฟังก์ชันแปลงวันที่ (ฉบับรองรับรูปแบบ 2506-05-07)
+        function formatSmartCardDate(thaiDateStr) {
+            // Input: "2506-05-07"
+            // Output ที่ต้องได้: "1963-05-07" (ต้องแปลง พ.ศ. เป็น ค.ศ. เพื่อลง Input type="date")
+
+            if (!thaiDateStr) return "";
+
+            try {
+                // 1. ตรวจสอบว่ามีเครื่องหมายขีดหรือไม่
+                if (thaiDateStr.includes("-")) {
+                    // แยกชิ้นส่วนด้วยขีด [-] จะได้ array ["2506", "05", "07"]
+                    const parts = thaiDateStr.split("-");
+
+                    if (parts.length === 3) {
+                        const yearBE = parseInt(parts[0]); // 2506
+                        const month = parts[1];            // 05
+                        const day = parts[2];              // 07
+
+                        // แปลงเป็น ค.ศ.
+                        const yearAD = yearBE - 543;       // 1963
+
+                        // ประกอบร่างคืน
+                        return `${yearAD}-${month}-${day}`;
+                    }
+                }
+                // 2. เผื่อกรณีข้อมูลมาแบบติดกัน (Backup Plan) เช่น "25060507"
+                else if (thaiDateStr.length === 8) {
+                    const yearBE = parseInt(thaiDateStr.substring(0, 4));
+                    const yearAD = yearBE - 543;
+                    const month = thaiDateStr.substring(4, 6);
+                    const day = thaiDateStr.substring(6, 8);
+                    return `${yearAD}-${month}-${day}`;
+                }
+
+                // ถ้าไม่เข้าเคสไหนเลย คืนค่าเดิมไปก่อน
+                return "";
+
+            } catch (e) {
+                console.error("Error formatting date:", e);
+                return "";
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 2. ฟังก์ชันเปิดโปรแกรม Agent
+        // ---------------------------------------------------------
+        function openSmartCardAgent() {
+            const statusDiv = document.getElementById("statusMessage");
+            try {
+                window.location.href = "cis-agent://open";
+                if (statusDiv) {
+                    statusDiv.innerHTML = "⏳ กำลังเรียกโปรแกรม... (กรุณากดยืนยันที่ Browser)";
+                    setTimeout(() => { statusDiv.innerHTML = ""; }, 5000);
+                }
+            } catch (e) {
+                alert("เรียกโปรแกรมไม่ได้: " + e.message);
+            }
+        }
+
+        // ---------------------------------------------------------
+        // 3. เริ่มทำงาน
+        // ---------------------------------------------------------
+        $(document).ready(function() {
+
+            $('#btnReadCard').click(function() {
+                Swal.fire({
+                    title: 'กำลังอ่านข้อมูลบัตร...',
+                    text: 'กรุณาเสียบบัตรประชาชนให้แน่น',
+                    icon: 'info',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                        readSmartCardData();
+                    }
+                });
+            });
+
+            function readSmartCardData() {
+                $.ajax({
+                    // URL นี้ต้องตรงกับ Agent ที่รันในเครื่อง (Localhost)
+                    url: 'http://localhost:8888/api/smartcard/read',
+                    type: 'GET',
+                    timeout: 5000,
+                    success: function(data) {
+                        Swal.close();
+                        console.log("Card Data:", data);
+
+                        if (data && data.CitizenId) {
+
+                            // --- Map ข้อมูล ---
+                            $('#CitizenId').val(data.CitizenId);
+                            $('#Title').val(data.TitleNameTh);
+                            $('#FirstNameTH').val(data.FirstNameTh);
+                            $('#LastNameTH').val(data.LastNameTh);
+                            $('#FirstNameEN').val(data.FirstNameEn);
+                            $('#LastNameEN').val(data.LastNameEn);
+
+                            // --- แก้ไข: การจัดการวันที่ ---
+                            // เรียกฟังก์ชันแปลงวันที่ ที่เราเขียนไว้ด้านบน
+                            if(data.BirthDate) {
+                                const isoDate = formatSmartCardDate(data.BirthDate);
+                                $('#DateOfBirth').val(isoDate);
+                            }
+
+                            // Flash Effect
+                            $('input[type="text"], input[type="date"]').css('background-color', '#e8f0fe');
+                            setTimeout(() => { $('input').css('background-color', ''); }, 1000);
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'อ่านข้อมูลสำเร็จ!',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+
+                        } else {
+                            Swal.fire('แจ้งเตือน', 'อ่านข้อมูลไม่ได้ หรือไม่ได้เสียบบัตร', 'warning');
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire('Error', 'เชื่อมต่อเครื่องอ่านไม่ได้ (ตรวจสอบว่าเปิดโปรแกรม Agent หรือยัง?)', 'error');
+                    }
+                });
+            }
+        });
+    </script>
+}

@@ -1,0 +1,270 @@
+﻿@model CIS.Models.LauncherLink
+@using CIS.Models
+
+@{
+    ViewData["Title"] = "แก้ไข Application Link";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">แก้ไขข้อมูล Application Link</h4>
+                </div>
+                <div class="card-body">
+                    <form asp-action="Edit">
+                        <input type="hidden" asp-for="Id" />
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Title" class="form-label fw-bold"></label>
+                                <input asp-for="Title" class="form-control" placeholder="เช่น ระบบงานคดี" />
+                                <span asp-validation-for="Title" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="LauncherGroupId" class="form-label fw-bold"></label>
+                                <select asp-for="LauncherGroupId" class="form-select" asp-items="ViewBag.LauncherGroupId"></select>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="TargetUrl" class="form-label fw-bold"></label>
+                            <input asp-for="TargetUrl" class="form-control" placeholder="https://..." />
+                            <span asp-validation-for="TargetUrl" class="text-danger"></span>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="Method" class="form-label fw-bold"></label>
+                                <select asp-for="Method" class="form-select" id="methodSelect" asp-items="Html.GetEnumSelectList<LaunchMethod>()"></select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="IconClass" class="form-label fw-bold"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light" id="icon-preview">
+                                        <i class="fas fa-link"></i>
+                                    </span>
+                                    <input asp-for="IconClass" class="form-control" id="selected-icon" readonly placeholder="คลิกปุ่มเพื่อเลือก..." />
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#iconPickerModal">
+                                        <i class="fas fa-search"></i> เลือก
+                                    </button>
+                                </div>
+                                <span asp-validation-for="IconClass" class="text-danger"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="apiParamsSection" style="display:none;">
+                            <div class="card bg-light border-secondary">
+                                <div class="card-header bg-secondary text-white py-1">
+                                    <small><i class="fas fa-network-wired"></i> เลือกข้อมูล HR ที่ต้องการส่ง (Parameter)</small>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        @foreach (var param in CIS.Models.HrParameterHelper.AvailableParameters)
+                                        {
+                                            <div class="col-md-4 col-6">
+                                                <div class="form-check">
+                                                    @{
+                                                        // ตรวจสอบค่าเดิมกรณี Validation Failed แล้วเด้งกลับมา
+                                                        bool isChecked = Model != null && !string.IsNullOrEmpty(Model.ApiParameters)
+                                                        && Model.ApiParameters.Split(',').Contains(param.Key);
+                                                    }
+                                                    <input class="form-check-input" type="checkbox" name="selectedParams" value="@param.Key" id="param_@param.Key" @(isChecked ? "checked" : "")>
+                                                    <label class="form-check-label" for="param_@param.Key">
+                                                        @param.Value
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                    <small class="text-muted mt-2 d-block">* ข้อมูลเหล่านี้จะถูกดึงจากระบบ HR ของผู้ใช้งานที่ล็อกอินอยู่ ส่งไปยังปลายทาง</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="apiTokenSection" style="display:none;">
+                            <label asp-for="ApiToken" class="form-label fw-bold text-danger">
+                                <i class="fas fa-key"></i> API Secret Key (สำหรับระบบปลายทาง)
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-danger text-white"><i class="fas fa-lock"></i></span>
+                                <input asp-for="ApiToken" class="form-control font-monospace" placeholder="เช่น sys_booking_x8s7f, hr_secret_1234" />
+                            </div>
+                            <div class="form-text">
+                                * กำหนดรหัสนี้ให้ตรงกับตัวแปร <code>$SECRET_KEY</code> ในไฟล์ PHP ปลายทาง
+                            </div>
+                            <span asp-validation-for="ApiToken" class="text-danger"></span>
+                        </div>
+
+                        <div class="mb-4">
+                            <label asp-for="ColorClass" class="form-label fw-bold">เลือกสีธีมปุ่ม</label>
+                            <div class="d-flex align-items-center gap-3 p-3 border rounded bg-light">
+
+                                <div>
+                                    <input type="color" asp-for="ColorClass"
+                                           class="form-control form-control-color shadow-sm"
+                                           id="colorInput"
+                                           value="@(Model?.ColorClass != null && Model.ColorClass.StartsWith("#") ? Model.ColorClass : "#0d6efd")"
+                                           title="เลือกสีที่ต้องการ">
+                                </div>
+
+                                <div class="flex-grow-1">
+                                    <input type="text" class="form-control font-monospace" id="colorHexText"
+                                           readonly style="max-width: 150px; text-transform: uppercase;">
+                                </div>
+
+                                <div class="ps-3 border-start text-center" style="min-width: 120px;">
+                                    <small class="text-muted d-block mb-1" style="font-size: 0.8rem;">ตัวอย่าง</small>
+                                    <button type="button" class="btn text-white shadow-sm btn-sm" id="btnPreview" style="background-color: #0d6efd; border: none;">
+                                        <i class="fas fa-link"></i> ปุ่มกด
+                                    </button>
+                                </div>
+                            </div>
+                            <span asp-validation-for="ColorClass" class="text-danger"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-3 pt-3 border-top">
+                            <a asp-action="Index" class="btn btn-secondary">ยกเลิก</a>
+                            <button type="submit" class="btn btn-primary px-4"><i class="fas fa-save"></i> บันทึกข้อมูล</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="iconPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title"><i class="fas fa-icons"></i> เลือกไอคอนระบบ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3 sticky-top bg-white pb-2" style="top: -1rem;">
+                    <input type="text" class="form-control shadow-sm" id="icon-search" placeholder="พิมพ์เพื่อค้นหาไอคอน (เช่น user, file, court)...">
+                </div>
+
+                <div class="row g-2" id="icon-grid">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        // --- 1. Script สำหรับจัดการ Icon Picker ---
+        const iconList = [
+            'fas fa-link', 'fas fa-home', 'fas fa-globe', 'fas fa-sitemap', 'fas fa-search',
+            'fas fa-file-alt', 'fas fa-folder-open', 'fas fa-copy', 'fas fa-clipboard-list', 'fas fa-archive',
+            'fas fa-edit', 'fas fa-save', 'fas fa-book', 'fas fa-newspaper',
+            'fas fa-user', 'fas fa-users', 'fas fa-user-tie', 'fas fa-id-card', 'fas fa-user-cog',
+            'fas fa-gavel', 'fas fa-balance-scale', 'fas fa-landmark', 'fas fa-university',
+            'fas fa-building', 'fas fa-stamp', 'fas fa-file-contract', 'fas fa-shield-alt',
+            'fas fa-cogs', 'fas fa-database', 'fas fa-server', 'fas fa-desktop', 'fas fa-laptop',
+            'fas fa-wifi', 'fas fa-key', 'fas fa-lock', 'fas fa-cloud', 'fas fa-chart-bar',
+            'fas fa-envelope', 'fas fa-phone', 'fas fa-comments', 'fas fa-video','fas fa-money-bill-alt',
+            'fas fa-dollar-sign','fas fa-handshake','fas fa-barcode','fas fa-award','fas fa-bell','fas fa-chart-pie',
+            'fas fa-coins','fas fa-tv','fas fa-bullhorn','fas fa-calendar-alt','fas fa-star','fas fa-map-marked-alt',
+            'fas fa-gem','fas fa-trophy','fas fa-chalkboard-teacher'
+        ];
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // -- ส่วน Icon --
+            const iconGrid = document.getElementById('icon-grid');
+            const searchInput = document.getElementById('icon-search');
+            const targetInput = document.getElementById('selected-icon');
+            const iconPreview = document.getElementById('icon-preview');
+            const modalEl = document.getElementById('iconPickerModal');
+            const modal = typeof bootstrap !== 'undefined' ? new bootstrap.Modal(modalEl) : null;
+
+            function renderIcons(filterText = '') {
+                iconGrid.innerHTML = '';
+                iconList.forEach(iconClass => {
+                    if(filterText && !iconClass.includes(filterText.toLowerCase())) return;
+
+                    const col = document.createElement('div');
+                    col.className = 'col-3 col-sm-2 text-center';
+
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-outline-light text-dark border w-100 p-2 icon-select-btn';
+                    btn.innerHTML = `<i class="${iconClass} fs-3 mb-2 text-primary"></i><br><small class="text-muted" style="font-size:10px">${iconClass.replace('fas fa-', '')}</small>`;
+
+                    btn.onclick = function() {
+                        targetInput.value = iconClass;
+                        iconPreview.innerHTML = `<i class="${iconClass}"></i>`;
+                        if (modal) {
+                            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                            modalInstance.hide();
+                        }
+                    };
+
+                    col.appendChild(btn);
+                    iconGrid.appendChild(col);
+                });
+            }
+
+            renderIcons();
+
+            searchInput.addEventListener('input', (e) => {
+                renderIcons(e.target.value);
+            });
+
+            if(targetInput.value) {
+                iconPreview.innerHTML = `<i class="${targetInput.value}"></i>`;
+            }
+
+            // -- 2. ส่วนจัดการ Color Picker --
+            const colorInput = document.getElementById('colorInput');
+            const colorText = document.getElementById('colorHexText');
+            const btnPreview = document.getElementById('btnPreview');
+
+            function updateColor(color) {
+                colorText.value = color.toUpperCase();
+                btnPreview.style.backgroundColor = color;
+
+                // คำนวณสีตัวอักษร ขาว/ดำ
+                const r = parseInt(color.substr(1, 2), 16);
+                const g = parseInt(color.substr(3, 2), 16);
+                const b = parseInt(color.substr(5, 2), 16);
+                const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+                btnPreview.style.color = (yiq >= 128) ? 'black' : 'white';
+            }
+
+            colorInput.addEventListener('input', function(e) {
+                updateColor(e.target.value);
+            });
+            updateColor(colorInput.value);
+
+            // -- 3. ส่วนจัดการ Toggle Parameter Section (เพิ่มใหม่) --
+            const methodSelect = document.getElementById('methodSelect');
+            const paramsSection = document.getElementById('apiParamsSection');
+
+            function toggleParams() {
+                // ค่า 1 คือ ApiPostAuth (ต้องดูตาม Enum LaunchMethod ของคุณว่าเลขไหน)
+                // ปกติ DirectLink=0, ApiPostAuth=1
+                if (methodSelect.value == "1") {
+                    paramsSection.style.display = "block";
+                    document.getElementById('apiTokenSection').style.display = "block";
+                } else {
+                    paramsSection.style.display = "none";
+                    document.getElementById('apiTokenSection').style.display = "none";
+                }
+            }
+
+            methodSelect.addEventListener('change', toggleParams);
+            toggleParams(); // เรียกครั้งแรกตอนโหลดหน้า เพื่อเช็คสถานะ
+        });
+    </script>
+}

@@ -1,0 +1,65 @@
+﻿@model List<CIS.ViewModels.AdGroupViewModel>
+@{
+    ViewData["Title"] = "จัดการกลุ่ม (Security Groups)";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+}
+
+<h1 class="text-primary"><i class="fas fa-users-shield"></i> จัดการ Security Groups</h1>
+<hr />
+
+<p>
+    <a asp-action="CreateGroup" class="btn btn-primary"><i class="fas fa-plus"></i> สร้างกลุ่มใหม่</a>
+    <a asp-action="Index" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> กลับไปจัดการผู้ใช้</a>
+</p>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success">@TempData["SuccessMessage"]</div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+}
+
+<div class="table-responsive">
+    <table class="table table-hover table-sm" id="groupsTable">
+        <thead>
+            <tr>
+                <th>Group Name</th>
+                <th>Description</th>
+                <th>OU</th>
+                <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td class="fw-bold text-primary">@item.SamAccountName</td>
+                    <td>@item.Description</td>
+                    <td><small class="text-muted">@item.DistinguishedName</small></td>
+                    <td>
+                        <a asp-action="ManageGroup" asp-route-id="@item.SamAccountName" class="btn btn-sm btn-info">
+                            <i class="fas fa-users"></i> สมาชิก
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('#groupsTable').DataTable({
+                language: { url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/th-TH.json" }
+            });
+        });
+    </script>
+}

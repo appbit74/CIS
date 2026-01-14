@@ -1,0 +1,136 @@
+﻿@model IEnumerable<CIS.Models.RoomBooking>
+
+@{
+    ViewData["Title"] = "อนุมัติการจองห้องประชุม";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+}
+
+<h1><i class="fas fa-tasks"></i> อนุมัติการจองห้องประชุม</h1>
+<hr />
+
+<div class="table-responsive">
+    <table class="table table-hover" id="bookingTable">
+        <thead>
+            <tr>
+                <th>สถานะ</th>
+                <th>ห้องประชุม</th>
+                <th>หัวข้อ</th>
+                <th>วันเวลา</th>
+                <th>ผู้จอง</th>
+                <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        @if (item.Status == CIS.Models.BookingStatus.Pending)
+                        {
+                            <span class="badge bg-warning text-dark">รออนุมัติ</span>
+                        }
+                        else if (item.Status == CIS.Models.BookingStatus.Approved)
+                        {
+                            <span class="badge bg-success">อนุมัติแล้ว</span>
+                        }
+                        else if (item.Status == CIS.Models.BookingStatus.Rejected)
+                        {
+                            <span class="badge bg-danger">ไม่อนุมัติ</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">ยกเลิก</span>
+                        }
+                    </td>
+                    <td>@item.MeetingRoom.Name</td>
+                    <td>@item.Title</td>
+                    <td>
+                        @item.StartTime.ToString("d/MM/yyyy HH:mm") - @item.EndTime.ToString("HH:mm")
+                    </td>
+                    <td>@item.BookedBy</td>
+                    <td>
+                        @if (item.Status == CIS.Models.BookingStatus.Pending)
+                        {
+                            <button class="btn btn-sm btn-success btn-update-status" data-id="@item.Id" data-status="Approved">
+                                <i class="fas fa-check"></i> อนุมัติ
+                            </button>
+                            <button class="btn btn-sm btn-danger btn-update-status" data-id="@item.Id" data-status="Rejected">
+                                <i class="fas fa-times"></i> ไม่อนุมัติ
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function() {
+            $('#bookingTable').DataTable({
+                "order": [], // ไม่ต้อง Auto sort ปล่อยตาม Controller
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/th-TH.json" }
+            });
+
+            // Logic ปุ่ม อนุมัติ/ไม่อนุมัติ
+            $('.btn-update-status').click(function() {
+                var id = $(this).data('id');
+                var statusStr = $(this).data('status');
+                var statusInt = statusStr === 'Approved' ? 1 : 2; // (Map กับ Enum: 1=Approved, 2=Rejected)
+                var token = $('input[name="__RequestVerificationToken"]').val(); // (ต้องมีฟอร์ม hidden หรือดึงจาก layout)
+
+                // ถ้าไม่มี Token ในหน้านี้ ให้ยืมจาก Layout หรือสร้าง Form หลอกๆ
+                // เพื่อความง่าย ผมจะสมมติว่า Layout มี Token หรือเราแปะไว้ตรงนี้
+            });
+
+            // แก้ไข Logic Click ให้สมบูรณ์แบบ (ใช้ SweetAlert)
+             $('#bookingTable').on('click', '.btn-update-status', function() {
+                var id = $(this).data('id');
+                var statusStr = $(this).data('status'); // 'Approved' or 'Rejected'
+                var statusInt = statusStr === 'Approved' ? 1 : 2;
+
+                var actionText = statusStr === 'Approved' ? 'อนุมัติ' : 'ปฏิเสธ';
+                var color = statusStr === 'Approved' ? '#198754' : '#dc3545';
+
+                Swal.fire({
+                    title: `ยืนยันการ${actionText}?`,
+                    text: `คุณต้องการ${actionText}รายการนี้ใช่หรือไม่?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: color,
+                    confirmButtonText: `ใช่, ${actionText}เลย`,
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // ส่ง Request
+                        $.ajax({
+                            url: '/Booking/UpdateStatus',
+                            type: 'POST',
+                            data: {
+                                id: id,
+                                status: statusInt,
+                                __RequestVerificationToken: $('input[name="__RequestVerificationToken"]').val()
+                            },
+                            success: function(res) {
+                                if(res.success) {
+                                    Swal.fire('เรียบร้อย', res.message, 'success').then(() => location.reload());
+                                } else {
+                                    Swal.fire('Error', res.message, 'error');
+                                }
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+
+    @Html.AntiForgeryToken()
+}

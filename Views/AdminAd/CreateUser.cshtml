@@ -1,0 +1,63 @@
+﻿@model CIS.ViewModels.CreateUserViewModel
+
+@{
+    ViewData["Title"] = "สร้างผู้ใช้ AD ใหม่";
+}
+
+<h1 class="text-danger">สร้างผู้ใช้ Active Directory (Admin)</h1>
+<p class="text-danger">
+    <i class="fas fa-exclamation-triangle"></i> คำเตือน: คุณกำลังแก้ไข Active Directory โดยตรง!
+</p>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="CreateUser">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-floating mb-3">
+                <select asp-for="SelectedOU" asp-items="@Model.OUList" class="form-select">
+                    <option value="">-- กรุณาเลือกสังกัด --</option>
+                </select>
+                <label asp-for="SelectedOU"></label>
+                <span asp-validation-for="SelectedOU" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Username" class="form-control" placeholder="user.name" />
+                <label asp-for="Username"></label>
+                <span asp-validation-for="Username" class="text-danger"></span>
+            </div>
+            <div class="form-floating mb-3">
+                <input asp-for="FirstName" class="form-control" placeholder="FirstName" />
+                <label asp-for="FirstName"></label>
+                <span asp-validation-for="FirstName" class="text-danger"></span>
+            </div>
+            <div class="form-floating mb-3">
+                <input asp-for="LastName" class="form-control" placeholder="LastName" />
+                <label asp-for="LastName"></label>
+                <span asp-validation-for="LastName" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="Email" class="form-control" placeholder="Email" />
+                <label asp-for="Email"></label>
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
+                <input asp-for="EmployeeID" class="form-control" placeholder="EmployeeID" />
+                <label asp-for="EmployeeID"></label>
+                <span asp-validation-for="EmployeeID" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="สร้างผู้ใช้" class="btn btn-danger" />
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

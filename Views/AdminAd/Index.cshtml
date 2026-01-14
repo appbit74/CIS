@@ -1,0 +1,289 @@
+﻿@model List<CIS.ViewModels.AdUserViewModel>
+
+@{
+    ViewData["Title"] = "จัดการผู้ใช้ AD";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+
+    <style>
+        /* จัดขนาดปุ่มสถานะให้เท่ากัน เพื่อความสวยงาม */
+        .btn-toggle-state {
+            min-width: 120px;
+            text-align: left;
+        }
+        /* ปรับแต่ง Badge สถานะ */
+        .badge {
+            font-size: 0.9em;
+            padding: 8px 12px;
+        }
+    </style>
+}
+
+<h1 class="text-danger">
+    <i class="fas fa-users-cog"></i> จัดการผู้ใช้ Active Directory
+</h1>
+<p class="text-danger">
+    <i class="fas fa-exclamation-triangle"></i> คำเตือน: คุณกำลังแก้ไขข้อมูลบน Active Directory โดยตรง!
+</p>
+
+@if (TempData["SuccessMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle"></i> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="mb-3">
+    <a asp-action="CreateUser" class="btn btn-primary shadow-sm">
+        <i class="fas fa-user-plus"></i> สร้างผู้ใช้ใหม่
+    </a>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="usersTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Username</th>
+                        <th>Display Name</th>
+                        <th>Email</th>
+                        <th>สถานะ</th>
+                        <th data-orderable="false" class="text-end">จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        // ถ้าปิดใช้งาน ให้แถวเป็นสีเทา
+                        <tr class="@(user.IsEnabled ? "" : "table-secondary text-muted")">
+                            <td class="fw-bold">@user.Username</td>
+                            <td>@user.DisplayName</td>
+                            <td>@user.Email</td>
+                            <td>
+                                @if (user.IsLockedOut)
+                                {
+                                    <span class="badge bg-danger"><i class="fas fa-lock"></i> ถูกล็อก</span>
+                                }
+                                else if (user.IsEnabled)
+                                {
+                                    <span class="badge bg-success"><i class="fas fa-check"></i> เปิดใช้งาน</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary"><i class="fas fa-ban"></i> ปิดใช้งาน</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group" role="group">
+                                    <a asp-action="EditUser" asp-route-id="@user.Username" class="btn btn-sm btn-warning" title="แก้ไขข้อมูล">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    <button class="btn btn-sm btn-outline-danger btn-reset-password" data-id="@user.Username" title="รีเซ็ตรหัสผ่าน">
+                                        <i class="fas fa-key"></i>
+                                    </button>
+
+                                    @if (user.IsEnabled)
+                                    {
+                                        <button class="btn btn-sm btn-secondary btn-toggle-state" data-id="@user.Username" data-action="ระงับ" title="ระงับบัญชี">
+                                            <i class="fas fa-user-slash"></i> ระงับ
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-success btn-toggle-state" data-id="@user.Username" data-action="เปิดใช้งาน" title="เปิดใช้งานบัญชี">
+                                            <i class="fas fa-user-check"></i> เปิดใช้งาน
+                                        </button>
+                                    }
+
+                                    @if (user.IsLockedOut)
+                                    {
+                                        <button class="btn btn-sm btn-info text-white btn-unlock" data-id="@user.Username" title="ปลดล็อกบัญชี">
+                                            <i class="fas fa-unlock"></i> ปลดล็อก
+                                        </button>
+                                    }
+
+                                    <button class="btn btn-sm btn-danger btn-delete" data-id="@user.Username" data-title="@user.DisplayName" title="ลบผู้ใช้ถาวร">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        $(document).ready(function() {
+            // 1. ดึง Token จาก Input ที่เราแปะไว้ด้านบน
+            const token = $('input[name="__RequestVerificationToken"]').val();
+
+            // 2. เริ่มต้น DataTables
+            $('#usersTable').DataTable({
+                language: {
+                    url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/th-TH.json"
+                },
+                order: [[0, 'asc']], // เรียงตาม Username (A-Z)
+                columnDefs: [
+                    { targets: 4, orderable: false } // ห้ามเรียงคอลัมน์ปุ่มจัดการ
+                ]
+            });
+
+            // ==========================================
+            // Logic 1: สลับสถานะ (ระงับ/เปิดใช้งาน)
+            // ==========================================
+            $('#usersTable tbody').on('click', '.btn-toggle-state', function () {
+                const username = $(this).data('id');
+                const actionText = $(this).data('action'); // "ระงับ" หรือ "เปิดใช้งาน"
+
+                Swal.fire({
+                    title: `ยืนยันการ${actionText}?`,
+                    html: `ต้องการ <b>${actionText}</b> บัญชี <b>${username}</b> ใช่หรือไม่?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: (actionText === 'ระงับ' ? '#6c757d' : '#198754'),
+                    confirmButtonText: `ใช่, ${actionText}เลย!`,
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("/AdminAd/ToggleUserState", {
+                            id: username,
+                            __RequestVerificationToken: token
+                        })
+                        .done(function (data) {
+                            if (data.success) {
+                                Swal.fire('สำเร็จ!', data.message, 'success').then(() => location.reload());
+                            } else {
+                                Swal.fire('ล้มเหลว!', data.message, 'error');
+                            }
+                        })
+                        .fail(function(xhr) {
+                             Swal.fire('Error', 'ไม่สามารถเชื่อมต่อ Server ได้: ' + xhr.status, 'error');
+                        });
+                    }
+                });
+            });
+
+            // ==========================================
+            // Logic 2: ปลดล็อกบัญชี
+            // ==========================================
+            $('#usersTable tbody').on('click', '.btn-unlock', function () {
+                const username = $(this).data('id');
+                Swal.fire({
+                    title: 'ยืนยันการปลดล็อก?',
+                    text: `ต้องการปลดล็อก ${username} ใช่หรือไม่?`,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'ปลดล็อก',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("/AdminAd/UnlockUser", {
+                            id: username,
+                            __RequestVerificationToken: token
+                        })
+                        .done(function (data) {
+                            if (data.success) {
+                                Swal.fire('สำเร็จ!', data.message, 'success').then(() => location.reload());
+                            } else {
+                                Swal.fire('ล้มเหลว!', data.message, 'error');
+                            }
+                        })
+                        .fail(function(xhr) {
+                             Swal.fire('Error', 'Server Error: ' + xhr.status, 'error');
+                        });
+                    }
+                });
+            });
+
+            // ==========================================
+            // Logic 3: รีเซ็ตรหัสผ่าน
+            // ==========================================
+            $('#usersTable tbody').on('click', '.btn-reset-password', function () {
+                const username = $(this).data('id');
+                Swal.fire({
+                    title: 'ยืนยันการรีเซ็ตรหัสผ่าน?',
+                    html: `ต้องการรีเซ็ตรหัสผ่านของ <b>${username}</b> เป็น <b>P@ssw0rd</b><br>และบังคับเปลี่ยนรหัสใหม่?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#ffc107',
+                    confirmButtonText: 'ใช่, รีเซ็ตเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("/AdminAd/ResetPassword", {
+                            id: username,
+                            __RequestVerificationToken: token
+                        })
+                        .done(function (data) {
+                            if (data.success) {
+                                Swal.fire('สำเร็จ!', data.message, 'success');
+                            } else {
+                                Swal.fire('ล้มเหลว!', data.message, 'error');
+                            }
+                        })
+                        .fail(function(xhr) {
+                             Swal.fire('Error', 'Server Error: ' + xhr.status, 'error');
+                        });
+                    }
+                });
+            });
+
+            // ==========================================
+            // Logic 4: ลบผู้ใช้ (ถาวร)
+            // ==========================================
+            $('#usersTable tbody').on('click', '.btn-delete', function () {
+                const username = $(this).data('id');
+                const displayName = $(this).data('title');
+
+                Swal.fire({
+                    title: '<span class="text-danger">ยืนยันการลบ!</span>',
+                    html: `คุณแน่ใจหรือไม่ว่าต้องการลบผู้ใช้:<br><b>${displayName} (${username})</b><br><b class='text-danger'>การกระทำนี้ "ลบถาวร" และ "ย้อนกลับไม่ได้"!</b>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.post("/AdminAd/DeleteUser", {
+                            id: username,
+                            __RequestVerificationToken: token
+                        })
+                        .done(function(data) {
+                            if (data.success) {
+                                Swal.fire('ลบแล้ว!', data.message, 'success').then(() => location.reload());
+                            } else {
+                                Swal.fire('ล้มเหลว!', data.message, 'error');
+                            }
+                        })
+                        .fail(function(xhr) {
+                            Swal.fire('Error', 'Server Error: ' + xhr.status, 'error');
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+}

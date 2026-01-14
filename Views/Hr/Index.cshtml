@@ -1,0 +1,115 @@
+﻿@model IEnumerable<CIS.Models.EmployeeProfile>
+
+@{
+    ViewData["Title"] = "ทะเบียนรายชื่อพนักงาน";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-users"></i> ทะเบียนรายชื่อพนักงาน (HR)</h2>
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> ลงทะเบียนพนักงานใหม่
+        </a>
+    </div>
+
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show">
+            <i class="fas fa-check-circle"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>วันที่เริ่มงาน</th>
+                        <th>ชื่อ - นามสกุล</th>
+                        <th>ตำแหน่ง / สังกัด</th>
+                        <th>AD Status</th>
+                        <th>Emp Status</th>
+                        <th class="text-center" style="width: 150px;">การจัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.CreatedDate.ToString("dd/MM/yyyy")</td>
+                            <td>
+                                <div class="fw-bold">@item.Title @item.FirstNameTH @item.LastNameTH</div>
+                                <small class="text-muted">@item.FirstNameEN @item.LastNameEN</small>
+                            </td>
+                            <td>
+                                <div>@item.Position</div>
+                                <small class="text-muted">@item.Division</small>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div>
+                                        @if (item.IsSyncedToAd)
+                                        {
+                                            <span class="badge bg-success"><i class="fas fa-check"></i> Synced</span>
+                                            <div style="font-size:12px;" class="text-success">@item.GeneratedUsername</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary"><i class="fas fa-clock"></i> Pending</span>
+                                            <div style="font-size:12px;" class="text-muted">@item.GeneratedUsername</div>
+                                        }
+                                    </div>
+
+                                    <form asp-action="CheckAdStatus" method="post">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-info" title="ตรวจสอบสถานะกับ AD (Re-Check)" data-bs-toggle="tooltip">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                            <td>
+                                @if (item.Status == CIS.Models.EmployeeStatus.Resigned)
+                                {
+                                    <span class="badge bg-danger">ลาออก (Resigned)</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-info text-dark">ปกติ (Active)</span>
+                                }
+                            </td>
+                            <td class="text-center">
+                                <div class="btn-group" role="group">
+                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning" title="แก้ไขข้อมูล">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+
+                                    @if (item.Status == CIS.Models.EmployeeStatus.Resigned)
+                                    {
+                                        <a asp-action="HardDelete" asp-route-id="@item.Id" class="btn btn-sm btn-dark" title="ลบออกจากฐานข้อมูลถาวร">
+                                            <i class="fas fa-trash-alt"></i> ลบถาวร
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" title="แจ้งพ้นสภาพ (Soft Delete)">
+                                            <i class="fas fa-user-times"></i>
+                                        </a>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">ไม่พบข้อมูลพนักงาน</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

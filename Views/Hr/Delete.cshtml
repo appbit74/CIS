@@ -1,0 +1,46 @@
+﻿@model CIS.Models.EmployeeProfile
+
+@{
+    ViewData["Title"] = "แจ้งพ้นสภาพพนักงาน";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-danger shadow">
+                <div class="card-header bg-danger text-white">
+                    <h4><i class="fas fa-exclamation-triangle"></i> ยืนยันการแจ้งพ้นสภาพ (Resignation)</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        คุณกำลังทำรายการแจ้งพ้นสภาพพนักงาน <strong>การกระทำนี้จะส่งเรื่องให้ IT ทำการระงับสิทธิ์ (Disable) ใน Active Directory</strong>
+                    </div>
+
+                    <dl class="row">
+                        <dt class="col-sm-4">ชื่อ-นามสกุล:</dt>
+                        <dd class="col-sm-8">@Model.FirstNameTH @Model.LastNameTH</dd>
+
+                        <dt class="col-sm-4">ตำแหน่ง:</dt>
+                        <dd class="col-sm-8">@Model.Position</dd>
+
+                        <dt class="col-sm-4">ส่วนงาน:</dt>
+                        <dd class="col-sm-8">@Model.Division</dd>
+
+                        <dt class="col-sm-4">Username (AD):</dt>
+                        <dd class="col-sm-8 fw-bold text-danger">@Model.GeneratedUsername</dd>
+                    </dl>
+
+                    <form asp-action="Delete">
+                        <input type="hidden" asp-for="Id" />
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                            <a asp-action="Index" class="btn btn-secondary me-md-2">ยกเลิก</a>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-user-times"></i> ยืนยันแจ้งพ้นสภาพ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

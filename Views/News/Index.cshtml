@@ -1,0 +1,189 @@
+﻿@model IEnumerable<CIS.Models.NewsArticle>
+
+@{
+    ViewData["Title"] = "รายการข่าวสาร";
+}
+
+<h1>รายการข่าวสาร</h1>
+
+<form asp-action="DeleteMultiple" method="post" id="deleteForm">
+    @Html.AntiForgeryToken()
+
+    @if (User.IsInRole(@"CRIMCAD\News_Admins"))
+    {
+        <p>
+            <a asp-action="Create" class="btn btn-primary"><i class="fas fa-plus"></i> สร้างข่าวใหม่</a>
+
+            <button type="submit" class="btn btn-danger" id="deleteSelectedButton" disabled>
+                <i class="fas fa-trash-alt"></i> ลบที่เลือก
+            </button>
+        </p>
+    }
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                @if (User.IsInRole(@"CRIMCAD\News_Admins"))
+                {
+                    <th style="width: 5%;">
+                        <input type="checkbox" class="form-check-input" id="selectAllCheckbox" />
+                    </th>
+                }
+                <th>
+                    @Html.DisplayNameFor(model => model.Title)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.PublishedDate)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.Author)
+                </th>
+                <th>
+                    @Html.DisplayNameFor(model => model.IsPublished)
+                </th>
+                <th style="width: 20%;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    @if (User.IsInRole(@"CRIMCAD\News_Admins"))
+                    {
+                        <td>
+                            <input type="checkbox" name="idsToDelete" value="@item.Id" class="form-check-input item-checkbox" />
+                        </td>
+                    }
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Title)
+                    </td>
+                    <td>
+                        @item.PublishedDate.ToString("g")
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Author)
+                    </td>
+                    <td>
+                        @if (item.IsPublished)
+                        {
+                            <span class="badge bg-success">เผยแพร่แล้ว</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">แบบร่าง</span>
+                        }
+                    </td>
+                    <td>
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">
+                            <i class="fas fa-eye"></i> รายละเอียด
+                        </a>
+                        @if (User.IsInRole(@"CRIMCAD\News_Admins"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i> แก้ไข
+                            </a>
+
+                            <button type="button" class="btn btn-sm btn-danger btn-delete-single" data-id="@item.Id" data-title="@item.Title">
+                                <i class="fas fa-trash"></i> ลบ
+                            </button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</form>
+
+@section Scripts {
+    <script>
+        $(document).ready(function() {
+
+            // --- Logic สำหรับ Checkbox ---
+            const $selectAll = $('#selectAllCheckbox');
+            const $items = $('.item-checkbox');
+            const $deleteSelectedBtn = $('#deleteSelectedButton');
+
+            function updateDeleteButtonState() {
+                // ถ้ามีติ๊กอย่างน้อย 1, ให้ปุ่มทำงานได้
+                $deleteSelectedBtn.prop('disabled', !$items.is(':checked'));
+            }
+
+            $selectAll.on('click', function() {
+                $items.prop('checked', this.checked);
+                updateDeleteButtonState();
+            });
+
+            $items.on('click', function() {
+                if (!$items.is(':checked')) {
+                    $selectAll.prop('checked', false);
+                } else if ($items.length === $items.filter(':checked').length) {
+                    $selectAll.prop('checked', true);
+                }
+                updateDeleteButtonState();
+            });
+
+            // --- Logic สำหรับ SweetAlert (ลบเดี่ยว) ---
+            $('.btn-delete-single').on('click', function () {
+                const newsId = $(this).data('id');
+                const newsTitle = $(this).data('title');
+                const token = $('input[name="__RequestVerificationToken"]').val(); // 9. *** ดึง Token ***
+
+                Swal.fire({
+                    title: 'ยืนยันการลบ?',
+                    html: `คุณแน่ใจหรือไม่ว่าต้องการลบข่าว:<br><b>${newsTitle}</b>`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // 10. *** สร้างฟอร์มปลอมเพื่อส่ง POST (ปลอดภัย) ***
+                        const form = document.createElement('form');
+                        form.method = 'post';
+                        form.action = `/News/Delete/${newsId}`; // 11. *** ชี้ไปที่ Action "DeleteConfirmed" (ที่รับ POST) ***
+
+                        const tokenInput = document.createElement('input');
+                        tokenInput.type = 'hidden';
+                        tokenInput.name = '__RequestVerificationToken';
+                        tokenInput.value = token;
+                        form.appendChild(tokenInput);
+
+                        document.body.appendChild(form);
+                        form.submit(); // 12. *** Submit ฟอร์มลบ ***
+                    }
+                });
+            });
+
+            // --- Logic สำหรับ SweetAlert (ลบกลุ่ม) ---
+            $('#deleteForm').on('submit', function (e) {
+                const checkedCount = $items.filter(':checked').length;
+                if (checkedCount === 0) {
+                    e.preventDefault(); // หยุด! ห้าม Submit
+                    Swal.fire('ยังไม่ได้เลือก', 'กรุณาเลือกข่าวที่ต้องการลบก่อนนะจ๊ะ', 'info');
+                    return;
+                }
+
+                e.preventDefault(); // หยุด Submit ไว้ก่อน
+                const form = this; // เก็บฟอร์มไว้
+
+                Swal.fire({
+                    title: 'ยืนยันการลบ?',
+                    html: `คุณแน่ใจหรือไม่ว่าต้องการลบข่าว <b>${checkedCount} รายการ</b> ที่เลือกไว้?`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'ใช่, ลบเลย!',
+                    cancelButtonText: 'ยกเลิก'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.submit(); // 13. *** Submit ฟอร์มจริง ***
+                    }
+                });
+            });
+
+        });
+    </script>
+}

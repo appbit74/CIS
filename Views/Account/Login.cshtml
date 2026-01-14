@@ -1,0 +1,162 @@
+﻿@model CIS.ViewModels.LoginViewModel
+
+@{
+    ViewData["Title"] = "Login";
+    Layout = "~/Views/Shared/_Layout_NoAuth.cshtml";
+}
+
+<style>
+    .login-card {
+        background-color: rgba(0, 0, 0, 0.4);
+        border: none;
+        border-radius: 10px;
+    }
+
+        .login-card .card-body {
+            color: #ffffff; /* Default text ใน card เป็นสีขาว */
+        }
+
+        .login-card .text-muted {
+            color: #d1d1d1 !important;
+        }
+
+        /* 2. *** นี่คือ CSS สำหรับ Input (ที่พิมพ์) *** */
+        .login-card .form-control {
+            background-color: #ffffff; /* พื้นหลังสีขาว */
+            color: #212529; /* 3. สีข้อความ "เมื่อกรอก" (สีดำ) (ถูกต้อง) */
+        }
+
+        /* 4. *** นี่คือจุดที่แก้ไข (Placeholder) *** */
+        /* * เราบังคับให้ <label> (ตอนที่มันยังไม่ลอย) เป็นสีเทาอ่อน
+        */
+        .login-card .form-floating > label {
+            color: #757575; /* 5. สีเทาอ่อน (ตามที่ขอ) สำหรับ Placeholder */
+        }
+
+        /* 6. (Optional) ทำให้ Label ที่ "ลอยขึ้น" เป็นสีขาว (เพื่อให้เข้ากับ Card) */
+        .login-card .form-floating > .form-control:focus ~ label,
+        .login-card .form-floating > .form-control:not(:placeholder-shown) ~ label {
+            color: #d1d1d1; /* สีเทาที่สว่างขึ้น / ขาว */
+        }
+
+
+        /* (ส่วนที่เหลือเหมือนเดิม) */
+        .login-card .input-group-text {
+            background-color: #e9ecef;
+        }
+
+    .btn-login-custom {
+        background-color: #4caf50 !important;
+        border: none;
+        color: white !important;
+    }
+
+        .btn-login-custom:hover {
+            background-color: #45a049 !important;
+        }
+
+    .btn-switch-user {
+        color: #b2ebf2;
+    }
+
+        .btn-switch-user:hover {
+            color: #ffffff;
+        }
+</style>
+
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card shadow-sm login-card">
+            <div class="card-body p-4 p-md-5">
+
+                <div class="text-center mb-4">
+                    <i class="fas fa-building fa-3x text-white"></i>
+                    <h3 class="mt-3" id="loginTitle">
+                        @if (Model.IsWindowsUserPreFilled)
+                        {
+                            @:ยืนยันตัวตน (Confirm Identity)
+                        }
+                        else
+                        {
+                            @:CIS Login
+                        }
+                    </h3>
+                    <small class="text-muted">CRIMC Intranet System</small>
+                </div>
+
+                <form id="account" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+                    <input type="hidden" asp-for="ReturnUrl" />
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-user"></i></span>
+                        <div class="form-floating flex-grow-1">
+                            <input asp-for="Username" class="form-control" placeholder="CRIMCAD\user.name" readonly="@Model.IsWindowsUserPreFilled" />
+                            <label asp-for="Username"></label>
+                        </div>
+                    </div>
+                    <span asp-validation-for="Username" class="text-danger d-block mb-2"></span>
+
+                    <div class="input-group mb-3">
+                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                        <div class="form-floating flex-grow-1">
+                            <input asp-for="Password" type="password" class="form-control" placeholder="password" autofocus="@Model.IsWindowsUserPreFilled" />
+                            <label asp-for="Password"></label>
+                        </div>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger d-block mb-2"></span>
+
+                    <div>
+                        <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-login-custom">
+                            @if (Model.IsWindowsUserPreFilled)
+                            {
+                                <i class="fas fa-check-circle"></i>
+                                @: ยืนยันรหัสผ่าน
+                            }
+                            else
+                            {
+                                <i class="fas fa-sign-in-alt"></i>
+                                @: Login
+                            }
+                        </button>
+                    </div>
+                </form>
+
+                <div class="text-center mt-3" id="switchUserButtonContainer">
+                    @if (Model.IsWindowsUserPreFilled)
+                    {
+                        <a href="#" id="switchUserLink" class="btn btn-link btn-sm btn-switch-user">
+                            <i class="fas fa-exchange-alt"></i> ไม่ใช่ @Model.Username? (เปลี่ยนผู้ใช้งาน)
+                        </a>
+                    }
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        $(document).ready(function() {
+            if ($('#switchUserLink').length) {
+                $('#switchUserLink').on('click', function(e) {
+                    e.preventDefault();
+                    $('#Username').removeAttr('readonly');
+                    $('#Username').val('').focus();
+                    $('#Password').val('');
+                    $('#loginTitle').text('CIS Login');
+
+                    $('#login-submit').html('<i class="fas fa-sign-in-alt"></i> Login')
+                                      .removeClass('btn-success')
+                                      .addClass('btn-login-custom');
+
+                    $('#switchUserButtonContainer').hide();
+                });
+            }
+        });
+    </script>
+}

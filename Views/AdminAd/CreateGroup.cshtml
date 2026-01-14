@@ -1,0 +1,23 @@
+﻿@model CIS.ViewModels.CreateUserViewModel
+@{
+    ViewData["Title"] = "สร้างกลุ่มใหม่";
+}
+
+<h1 class="text-primary">สร้าง Security Group ใหม่</h1>
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="CreateGroup">
+            <div class="form-floating mb-3">
+                <select asp-for="SelectedOU" asp-items="@Model.OUList" class="form-select"></select>
+                <label>เลือก OU ที่จะเก็บกลุ่ม</label>
+            </div>
+            <div class="form-floating mb-3">
+                <input asp-for="Username" class="form-control" placeholder="GroupName" />
+                <label>ชื่อกลุ่ม (Group Name)</label>
+            </div>
+            <button type="submit" class="btn btn-primary">สร้างกลุ่ม</button>
+            <a asp-action="GroupList" class="btn btn-link">ยกเลิก</a>
+        </form>
+    </div>
+</div>

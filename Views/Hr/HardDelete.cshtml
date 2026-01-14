@@ -1,0 +1,44 @@
+﻿@model CIS.Models.EmployeeProfile
+
+@{
+    ViewData["Title"] = "ยืนยันการลบถาวร";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-dark shadow">
+                <div class="card-header bg-dark text-white">
+                    <h4><i class="fas fa-skull-crossbones"></i> ยืนยันการลบข้อมูลถาวร (Hard Delete)</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <strong>คำเตือน:</strong> คุณกำลังจะลบข้อมูลออกจากฐานข้อมูลอย่างถาวร
+                        ข้อมูลนี้ <u>จะไม่สามารถกู้คืนได้</u> (This cannot be undone)
+                    </div>
+
+                    <dl class="row">
+                        <dt class="col-sm-4">ชื่อ-นามสกุล:</dt>
+                        <dd class="col-sm-8">@Model.FirstNameTH @Model.LastNameTH</dd>
+
+                        <dt class="col-sm-4">Username (AD):</dt>
+                        <dd class="col-sm-8">@Model.GeneratedUsername</dd>
+
+                        <dt class="col-sm-4">สถานะปัจจุบัน:</dt>
+                        <dd class="col-sm-8"><span class="badge bg-secondary">Resigned (ลาออกแล้ว)</span></dd>
+                    </dl>
+
+                    <form asp-action="HardDelete">
+                        <input type="hidden" asp-for="Id" />
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                            <a asp-action="Index" class="btn btn-secondary me-md-2">ยกเลิก</a>
+                            <button type="submit" class="btn btn-dark">
+                                <i class="fas fa-trash-alt"></i> ยืนยันลบถาวร
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

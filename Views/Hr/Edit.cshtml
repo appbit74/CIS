@@ -1,0 +1,155 @@
+﻿@model CIS.Models.EmployeeProfile
+
+@{
+    ViewData["Title"] = "แก้ไขข้อมูลพนักงาน";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1><i class="fas fa-user-edit"></i> แก้ไขข้อมูลพนักงาน</h1>
+    <a asp-action="Index" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left"></i> ย้อนกลับ
+    </a>
+</div>
+
+<hr />
+
+@if (Model.IsSyncedToAd)
+{
+    <div class="alert alert-warning shadow-sm">
+        <i class="fas fa-lock"></i> พนักงานนี้มี User ใน AD แล้ว ระบบจะไม่อนุญาตให้แก้ไข <b>เลขบัตรประชาชน</b> และ <b>Username</b>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-10 offset-md-1">
+        <form asp-action="Edit" class="card shadow-sm p-4">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="CreatedDate" />
+            <input type="hidden" asp-for="IsSyncedToAd" />
+            <input type="hidden" asp-for="IsAdDisabled" />
+            <input type="hidden" asp-for="GeneratedUsername" />
+
+            <h5 class="text-primary border-bottom pb-2 mb-3">1. ข้อมูลส่วนตัว</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="CitizenId" class="form-label">เลขบัตรประชาชน</label>
+                    <input asp-for="CitizenId" class="form-control"
+                           readonly="@(Model.IsSyncedToAd ? "readonly" : null)"
+                           style="@(Model.IsSyncedToAd ? "background-color: #e9ecef;" : "")" />
+                    <span asp-validation-for="CitizenId" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="DateOfBirth" class="form-label">วันเกิด</label>
+                    <input asp-for="DateOfBirth" type="date" class="form-control" />
+                    <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Title" class="form-label">คำนำหน้าชื่อ</label>
+                    <input asp-for="Title" class="form-control" />
+                    <span asp-validation-for="Title" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="FirstNameTH" class="form-label">ชื่อ (ไทย)</label>
+                    <input asp-for="FirstNameTH" class="form-control" />
+                    <span asp-validation-for="FirstNameTH" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="LastNameTH" class="form-label">นามสกุล (ไทย)</label>
+                    <input asp-for="LastNameTH" class="form-control" />
+                    <span asp-validation-for="LastNameTH" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="FirstNameEN" class="form-label">ชื่อ (อังกฤษ)</label>
+                    <input asp-for="FirstNameEN" class="form-control" placeholder="English First Name" />
+                    <span asp-validation-for="FirstNameEN" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="LastNameEN" class="form-label">นามสกุล (อังกฤษ)</label>
+                    <input asp-for="LastNameEN" class="form-control" placeholder="English Last Name" />
+                    <span asp-validation-for="LastNameEN" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PhoneNumber" class="form-label">เบอร์โทรศัพท์</label>
+                    <input asp-for="PhoneNumber" class="form-control" />
+                    <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="PersonalEmail" class="form-label">E-mail</label>
+                    <input asp-for="PersonalEmail" class="form-control" />
+                    <span asp-validation-for="PersonalEmail" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold text-muted">Username (AD Account)</label>
+                <input asp-for="GeneratedUsername" class="form-control" readonly style="background-color: #e9ecef; font-weight:bold; color:blue;" />
+            </div>
+
+            <h5 class="text-primary border-bottom pb-2 mb-3 mt-4">2. ข้อมูลตำแหน่งและหน่วยงาน</h5>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="PositionLevel" class="form-label">ระดับตำแหน่ง</label>
+                    <select asp-for="PositionLevel" class="form-select" asp-items="Html.GetEnumSelectList<CIS.Models.PositionLevel>()"></select>
+                    <span asp-validation-for="PositionLevel" class="text-danger"></span>
+                </div>
+
+                <div class="col-md-8 mb-3">
+                    <label asp-for="PositionId" class="form-label">ตำแหน่ง (Position)</label>
+
+                    <select asp-for="PositionId" class="form-select" asp-items="ViewBag.PositionList">
+                        <option value="">-- กรุณาเลือกตำแหน่ง --</option>
+                    </select>
+
+                    <span asp-validation-for="PositionId" class="text-danger"></span>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="DivisionId" class="form-label">ส่วนงาน (Division) <span class="text-danger">*</span></label>
+                    <select asp-for="DivisionId" class="form-select" asp-items="ViewBag.DivisionList">
+                        <option value="">-- กรุณาเลือกส่วนงาน --</option>
+                    </select>
+                    <span asp-validation-for="DivisionId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label asp-for="SectionId" class="form-label">หน่วยงานย่อย (Section) <span class="text-danger">*</span></label>
+                    <select asp-for="SectionId" class="form-select" asp-items="ViewBag.SectionList">
+                        <option value="">-- กรุณาเลือกงาน/แผนก --</option>
+                    </select>
+                    <span asp-validation-for="SectionId" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label asp-for="Status" class="form-label fw-bold">สถานะการทำงาน</label>
+                    <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<CIS.Models.EmployeeStatus>()"></select>
+                </div>
+            </div>
+
+            <div class="text-center mt-4 d-flex gap-2 justify-content-center">
+                <button type="submit" class="btn btn-lg btn-success px-5">
+                    <i class="fas fa-save"></i> บันทึกการแก้ไข
+                </button>
+                <a asp-action="Index" class="btn btn-lg btn-secondary px-5">ยกเลิก</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

@@ -1,0 +1,192 @@
+﻿@model IEnumerable<CIS.Models.SupplyOrder>
+
+@{
+    ViewData["Title"] = "อนุมัติรายการเบิกวัสดุ";
+}
+
+<div class="container-fluid">
+    <h2 class="mb-4 text-primary"><i class="fa fa-tasks"></i> รายการเบิกวัสดุ (รออนุมัติ)</h2>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-dark text-white">
+                        <tr>
+                            <th>วันที่</th>
+                            <th>ผู้เบิก</th>
+                            <th>รายการสินค้า</th>
+                            <th>เหตุผลการเบิก</th>
+                            <th>สถานะ</th>
+                            <th style="width: 180px;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model)
+                        {
+                            <tr id="row-@order.Id">
+                                <td>@order.OrderDate.ToString("dd/MM/yy HH:mm")</td>
+                                <td>
+                                    <div class="fw-bold">@order.Requester?.FirstNameTH @order.Requester?.LastNameTH</div>
+                                    <div class="small text-muted">@order.Requester?.Division</div>
+                                </td>
+                                <td>
+                                    <ul class="mb-0 ps-3 small">
+                                        @foreach (var detail in order.OrderItems)
+                                        {
+                                            // เช็คว่าของพอไหม
+                                            bool isStockEnough = detail.Item.StockQuantity >= detail.Quantity;
+                                            <li class="@(isStockEnough ? "" : "text-danger fw-bold")">
+                                                @detail.Item?.ItemName : @detail.Quantity @detail.Item?.Unit
+                                                @if (!isStockEnough)
+                                                {
+                                                    <span>(ของไม่พอ! เหลือ @detail.Item.StockQuantity)</span>
+                                                }
+                                            </li>
+                                        }
+                                    </ul>
+                                </td>
+                                <td>@order.UserRemark</td>
+                                <td>
+                                    @if (order.Status == CIS.Models.SupplyStatus.Pending)
+                                    {
+                                        <span class="badge bg-warning text-dark">รออนุมัติ</span>
+                                    }
+                                    else if (order.Status == CIS.Models.SupplyStatus.Approved)
+                                    {
+                                        <span class="badge bg-success">อนุมัติแล้ว</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (order.Status == CIS.Models.SupplyStatus.Pending)
+                                    {
+                                        <button class="btn btn-sm btn-success mb-1 w-100" onclick="openActionModal(@order.Id, 'Approve')">
+                                            <i class="fa fa-check"></i> อนุมัติ
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger w-100" onclick="openActionModal(@order.Id, 'Reject')">
+                                            <i class="fa fa-times"></i> ไม่อนุมัติ
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">ดำเนินการแล้ว</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="actionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="actionTitle">ยืนยันการทำรายการ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="actionOrderId" />
+                <input type="hidden" id="actionType" />
+
+                <p id="actionMessage">คุณต้องการ...</p>
+
+                <div class="mb-3">
+                    <label class="form-label">หมายเหตุ (Admin Remark):</label>
+                    <textarea class="form-control" id="adminRemark" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-primary" onclick="submitAction()">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        var actionModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+             actionModal = new bootstrap.Modal(document.getElementById('actionModal'));
+        });
+
+        function openActionModal(id, type) {
+            document.getElementById('actionOrderId').value = id;
+            document.getElementById('actionType').value = type;
+            document.getElementById('adminRemark').value = '';
+
+            const title = document.getElementById('actionTitle');
+            const msg = document.getElementById('actionMessage');
+            const btn = document.querySelector('#actionModal .btn-primary');
+
+            if (type === 'Approve') {
+                title.innerText = 'อนุมัติคำขอ (ตัดสต็อก)';
+                title.className = 'modal-title text-success fw-bold';
+                msg.innerText = 'ระบบจะทำการตัดสต็อกสินค้าทันที ยืนยันหรือไม่?';
+                btn.className = 'btn btn-success';
+                btn.innerText = 'ยืนยันอนุมัติ';
+            } else {
+                title.innerText = 'ไม่อนุมัติคำขอ';
+                title.className = 'modal-title text-danger fw-bold';
+                msg.innerText = 'กรุณาระบุเหตุผลที่ไม่อนุมัติ:';
+                btn.className = 'btn btn-danger';
+                btn.innerText = 'ยืนยันไม่อนุมัติ';
+            }
+
+            actionModal.show();
+        }
+
+        async function submitAction() {
+            const id = document.getElementById('actionOrderId').value;
+            const type = document.getElementById('actionType').value;
+            const remark = document.getElementById('adminRemark').value;
+
+            // กำหนด URL ปลายทาง
+            const url = type === 'Approve' ? '/Supply/ApproveOrder' : '/Supply/RejectOrder';
+
+            try {
+                // ส่ง FormData เพื่อให้ Compatible กับ Controller ที่รับ Form
+                const formData = new FormData();
+                formData.append('id', id);
+                formData.append('adminRemark', remark);
+
+                // ใส่ Token ถ้าจำเป็น
+                // formData.append('__RequestVerificationToken', $('input[name="__RequestVerificationToken"]').val());
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        // 'RequestVerificationToken': ... (ถ้าเปิด AntiForgeryToken)
+                         // Content-Type จะถูกจัดการอัตโนมัติเมื่อใช้ FormData
+                    },
+                    body: formData
+                });
+
+                if (response.ok) { // Check HTTP Status 200-299
+                     const result = await response.json();
+                     if (result.success) {
+                         alert(result.message);
+                         location.reload(); // รีโหลดหน้าเพื่ออัปเดตสถานะ
+                     } else {
+                         alert("เกิดข้อผิดพลาด: " + result.message);
+                     }
+                } else {
+                    alert("Server Error: " + response.statusText);
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+            }
+        }
+    </script>
+}

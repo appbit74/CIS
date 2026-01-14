@@ -1,0 +1,64 @@
+﻿@model IEnumerable<CIS.Models.SupplyOrder>
+
+@{
+    ViewData["Title"] = "ประวัติการเบิกของฉัน";
+}
+
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="fa fa-history"></i> ประวัติการเบิกวัสดุ</h2>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info text-center">
+            คุณยังไม่เคยทำรายการเบิก <a asp-action="Index" class="alert-link">ไปที่หน้าเลือกสินค้า</a>
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead class="bg-light">
+                    <tr>
+                        <th>วันที่เบิก</th>
+                        <th>รายการที่ขอ</th>
+                        <th>หมายเหตุ</th>
+                        <th>สถานะ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var order in Model)
+                    {
+                        <tr>
+                            <td>@order.OrderDate.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <ul class="mb-0 ps-3">
+                                    @foreach (var item in order.OrderItems)
+                                    {
+                                        <li>@item.Item?.ItemName (@item.Quantity @item.Item?.Unit)</li>
+                                    }
+                                </ul>
+                            </td>
+                            <td>@order.UserRemark</td>
+                            <td>
+                                @if (order.Status == CIS.Models.SupplyStatus.Pending)
+                                {
+                                    <span class="badge bg-warning text-dark">รออนุมัติ</span>
+                                }
+                                else if (order.Status == CIS.Models.SupplyStatus.Approved)
+                                {
+                                    <span class="badge bg-success">อนุมัติแล้ว</span>
+                                    <div class="small text-muted mt-1">โดย: @order.ApprovedBy</div>
+                                }
+                                else if (order.Status == CIS.Models.SupplyStatus.Rejected)
+                                {
+                                    <span class="badge bg-danger">ไม่อนุมัติ</span>
+                                    <div class="small text-danger mt-1">เหตุผล: @order.AdminRemark</div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

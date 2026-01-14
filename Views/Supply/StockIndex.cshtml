@@ -1,0 +1,81 @@
+﻿@model IEnumerable<CIS.Models.SupplyItem>
+
+@{
+    ViewData["Title"] = "จัดการสต็อกวัสดุ";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>🏭 จัดการสต็อกวัสดุ</h2>
+        <a asp-action="CreateItem" class="btn btn-success">
+            <i class="fa fa-plus-circle"></i> เพิ่มสินค้าใหม่
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 80px;">รูปภาพ</th>
+                            <th>ชื่อวัสดุ</th>
+                            <th>รายละเอียด</th>
+                            <th class="text-center">คงเหลือ</th>
+                            <th class="text-center">หน่วย</th>
+                            <th class="text-center">สถานะ</th>
+                            <th class="text-center">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>
+                                    @if (!string.IsNullOrEmpty(item.ImagePath))
+                                    {
+                                        <img src="@item.ImagePath" class="img-thumbnail" style="width: 50px; height: 50px; object-fit: cover;">
+                                    }
+                                    else
+                                    {
+                                        <div class="bg-light text-center rounded pt-2" style="width: 50px; height: 50px;">
+                                            <i class="fa fa-box text-secondary"></i>
+                                        </div>
+                                    }
+                                </td>
+                                <td class="fw-bold">@item.ItemName</td>
+                                <td class="small text-muted">@item.Description</td>
+                                <td class="text-center">
+                                    @if (item.StockQuantity <= item.LowStockThreshold)
+                                    {
+                                        <span class="badge bg-danger">@item.StockQuantity</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-success">@item.StockQuantity</span>
+                                    }
+                                </td>
+                                <td class="text-center">@item.Unit</td>
+                                <td class="text-center">
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="badge bg-primary">ใช้งาน</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">ปิด</span>
+                                    }
+                                </td>
+                                <td class="text-center">
+                                    <a asp-action="EditItem" asp-route-id="@item.Id" class="btn btn-sm btn-outline-warning">
+                                        <i class="fa fa-edit"></i> แก้ไข
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

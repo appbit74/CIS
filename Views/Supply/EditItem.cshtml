@@ -1,0 +1,68 @@
+﻿@model CIS.Models.SupplyItem
+
+@{
+    ViewData["Title"] = "แก้ไขวัสดุ";
+}
+
+<div class="container" style="max-width: 800px;">
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0"><i class="fa fa-box-open"></i> เพิ่มข้อมูลวัสดุ</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="EditItem" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <label asp-for="ItemName" class="form-label fw-bold"></label>
+                        <input asp-for="ItemName" class="form-control" placeholder="ระบุชื่อวัสดุ" />
+                        <span asp-validation-for="ItemName" class="text-danger"></span>
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Unit" class="form-label fw-bold"></label>
+                        <input asp-for="Unit" class="form-control" placeholder="เช่น ด้าม, กล่อง" />
+                        <span asp-validation-for="Unit" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Description" class="form-label"></label>
+                    <textarea asp-for="Description" class="form-control" rows="2"></textarea>
+                    <span asp-validation-for="Description" class="text-danger"></span>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label asp-for="StockQuantity" class="form-label fw-bold"></label>
+                        <input asp-for="StockQuantity" class="form-control" type="number" min="0" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="LowStockThreshold" class="form-label"></label>
+                        <input asp-for="LowStockThreshold" class="form-control" type="number" min="0" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="ImagePath" class="form-label"></label>
+                        <input asp-for="ImagePath" class="form-control" placeholder="URL รูปภาพ (ถ้ามี)" />
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" asp-for="IsActive">
+                    <label class="form-check-label" asp-for="IsActive">เปิดให้เบิกใช้งาน</label>
+                </div>
+
+                <div class="d-flex justify-content-end">
+                    <a asp-action="StockIndex" class="btn btn-secondary me-2">ยกเลิก</a>
+                    <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> บันทึกข้อมูล</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

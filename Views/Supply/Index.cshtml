@@ -1,0 +1,246 @@
+﻿@model IEnumerable<CIS.Models.SupplyItem>
+
+@{
+    ViewData["Title"] = "เบิกวัสดุสำนักงาน";
+}
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>📦 เบิกวัสดุสำนักงาน</h2>
+        <a asp-action="MyHistory" class="btn btn-outline-info">
+            <i class="fa fa-history"></i> ประวัติการเบิกของฉัน
+        </a>
+    </div>
+
+    <div class="row">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-3 col-sm-6 mb-4">
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body text-center">
+                        <div class="mb-3" style="height: 120px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; border-radius: 8px;">
+                            @if (!string.IsNullOrEmpty(item.ImagePath))
+                            {
+                                <img src="@item.ImagePath" style="max-height: 100px; max-width: 100%;" alt="@item.ItemName">
+                            }
+                            else
+                            {
+                                <span class="text-muted"><i class="fa fa-box-open fa-3x"></i></span>
+                            }
+                        </div>
+
+                        <h5 class="card-title text-truncate" title="@item.ItemName">@item.ItemName</h5>
+                        <p class="card-text text-muted small">@item.Description</p>
+
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <span class="badge bg-secondary">หน่วย: @item.Unit</span>
+                            @if (item.StockQuantity > 0)
+                            {
+                                <span class="text-success small"><i class="fa fa-check-circle"></i> มีของ @item.StockQuantity</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger small"><i class="fa fa-times-circle"></i> สินค้าหมด</span>
+                            }
+                        </div>
+
+                        <hr />
+
+                        <div class="input-group mb-2">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="adjustQty(@item.Id, -1)">-</button>
+                            <input type="number" id="qty-@item.Id" class="form-control form-control-sm text-center" value="1" min="1" max="@item.StockQuantity">
+                            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="adjustQty(@item.Id, 1)">+</button>
+                        </div>
+
+                        <button class="btn btn-primary btn-sm w-100"
+                                onclick="addToCart(@item.Id, '@item.ItemName', @item.StockQuantity)"
+                                @(item.StockQuantity <= 0 ? "disabled" : "")>
+                            <i class="fa fa-cart-plus"></i> หยิบใส่ตะกร้า
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div id="cart-floating-btn" class="position-fixed bottom-0 end-0 m-4" style="z-index: 1050; display: none;">
+    <button class="btn btn-warning btn-lg shadow rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#cartModal">
+        <i class="fa fa-shopping-cart"></i> รายการเบิก
+        <span class="badge bg-danger rounded-pill ms-2" id="cart-count">0</span>
+    </button>
+</div>
+
+<div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fa fa-list-alt"></i> สรุปรายการเบิก</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>รายการ</th>
+                                <th style="width: 120px;" class="text-center">จำนวน</th>
+                                <th style="width: 80px;" class="text-center">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-items-body">
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mb-3">
+                    <label for="orderRemark" class="form-label fw-bold">เหตุผลการเบิก / หมายเหตุ <span class="text-danger">*</span></label>
+                    <textarea class="form-control" id="orderRemark" rows="3" placeholder="เช่น ใช้สำหรับจัดโครงการอบรม..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-success" onclick="submitOrder()">
+                    <i class="fa fa-paper-plane"></i> ยืนยันการเบิก
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // เก็บ State ของตะกร้าสินค้า
+        let cart = [];
+
+        // ฟังก์ชันปรับตัวเลขใน Input
+        function adjustQty(id, change) {
+            const input = document.getElementById(`qty-${id}`);
+            let val = parseInt(input.value) || 0;
+            let max = parseInt(input.getAttribute('max'));
+
+            val += change;
+            if (val < 1) val = 1;
+            if (val > max) val = max; // ห้ามเกิน Stock
+
+            input.value = val;
+        }
+
+        // เพิ่มสินค้าลงตะกร้า
+        function addToCart(id, name, maxStock) {
+            const qtyInput = document.getElementById(`qty-${id}`);
+            const qty = parseInt(qtyInput.value);
+
+            if (qty <= 0 || qty > maxStock) {
+                alert("จำนวนไม่ถูกต้อง หรือสินค้าไม่เพียงพอ");
+                return;
+            }
+
+            // เช็คว่ามีในตะกร้าหรือยัง
+            const existingItem = cart.find(x => x.itemId === id);
+            if (existingItem) {
+                if (existingItem.quantity + qty > maxStock) {
+                    alert("คุณเลือกรายการนี้เกินจำนวนที่มีในสต็อกแล้ว");
+                    return;
+                }
+                existingItem.quantity += qty;
+            } else {
+                cart.push({ itemId: id, itemName: name, quantity: qty, maxStock: maxStock });
+            }
+
+            // Reset Input
+            qtyInput.value = 1;
+
+            // Effect แจ้งเตือนเล็กน้อย (Optional)
+            // alert(`เพิ่ม ${name} จำนวน ${qty} ชิ้น เรียบร้อย!`);
+
+            updateCartUI();
+        }
+
+        // ลบจากตะกร้า
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCartUI();
+        }
+
+        // อัปเดต UI (ปุ่มลอย และ ตารางใน Modal)
+        function updateCartUI() {
+            const count = cart.length;
+            const floatingBtn = document.getElementById('cart-floating-btn');
+            const badge = document.getElementById('cart-count');
+            const tbody = document.getElementById('cart-items-body');
+
+            // 1. จัดการปุ่มลอย
+            badge.innerText = count;
+            floatingBtn.style.display = count > 0 ? 'block' : 'none';
+
+            // 2. Render ตารางใน Modal
+            tbody.innerHTML = '';
+            if (count === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">ยังไม่มีรายการ</td></tr>';
+                return;
+            }
+
+            cart.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item.itemName}</td>
+                    <td class="text-center">${item.quantity}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-danger" onclick="removeFromCart(${index})">
+                            <i class="fa fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // ส่งข้อมูลไปหลังบ้าน
+        async function submitOrder() {
+            const remark = document.getElementById('orderRemark').value;
+
+            if (cart.length === 0) {
+                alert("กรุณาเลือกสินค้าก่อน");
+                return;
+            }
+            if (!remark.trim()) {
+                alert("กรุณาระบุเหตุผลการเบิก");
+                return;
+            }
+
+            // เตรียม Payload
+            const payload = {
+                remark: remark,
+                items: cart.map(i => ({ itemId: i.itemId, quantity: i.quantity }))
+            };
+
+            if(!confirm("ยืนยันการส่งใบเบิก?")) return;
+
+            try {
+                const response = await fetch('/Supply/CreateOrder', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // ถ้ามี AntiForgeryToken ต้องใส่ตรงนี้ (แต่ใน Code Controller ผมไม่ได้ใส่ [ValidateForgeryToken] ไว้ที่ Method นี้เพื่อให้ง่ายต่อ JS Fetch)
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message);
+                    // Clear ตะกร้าและรีโหลด
+                    cart = [];
+                    window.location.href = '/Supply/MyHistory';
+                } else {
+                    alert("เกิดข้อผิดพลาด: " + result.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+            }
+        }
+    </script>
+}

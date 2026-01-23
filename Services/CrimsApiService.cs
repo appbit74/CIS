@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq; // จำเป็นสำหรับการใช้ OrderBy
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -66,7 +67,14 @@ namespace CIS.Services
                     // (สมมติว่า API ตอบกลับมาเป็น Format {"1": "ชื่อ", "2": "ชื่อ"} เหมือนเดิม)
                     var data = JsonSerializer.Deserialize<Dictionary<string, string>>(jsonString);
 
-                    return data ?? emptyResult;
+                    // ✅ ปรับปรุง: เรียงลำดับตามชื่อ (Value) ก-ฮ
+                    if (data != null)
+                    {
+                        return data.OrderBy(x => x.Value)
+                                   .ToDictionary(x => x.Key, x => x.Value);
+                    }
+
+                    return emptyResult;
                 }
                 else
                 {

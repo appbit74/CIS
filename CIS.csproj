@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="HtmlSanitizer" Version="9.0.886" />
+    <PackageReference Include="HtmlSanitizer" Version="8.0.865" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Negotiate" Version="8.0.21" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.21" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.22">

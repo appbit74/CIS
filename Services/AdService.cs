@@ -12,6 +12,7 @@ namespace CIS.Services
         void UpdateAdUser(string username, EmployeeProfile updatedData); // แก้ไข
         void ToggleDisableUser(string username, bool disable); // ปิด/เปิด การใช้งาน (แทนการลบ)
         void DeleteAdUser(string username); // ลบถาวร
+        string GetCitizenIdByUsername(string username);
     }
 
     public class AdService : IAdService
@@ -119,6 +120,34 @@ namespace CIS.Services
                     user.Delete(); // หายวับไปเลย
                 }
             }
+        }
+
+        // [เพิ่มใหม่] Implementation
+        public string GetCitizenIdByUsername(string username)
+        {
+            try
+            {
+                // ตัด Domain ออกถ้ามี (เช่น "CRIMCAD\User" -> "User")
+                if (username.Contains("\\"))
+                {
+                    username = username.Split('\\')[1];
+                }
+
+                using (var context = GetPrincipalContext())
+                {
+                    var user = UserPrincipal.FindByIdentity(context, username);
+                    if (user != null)
+                    {
+                        // ดึงค่า employeeID ซึ่งเราตกลงกันว่าเก็บ CitizenId ไว้ในนี้
+                        return user.EmployeeId;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error fetching AD user info for {username}");
+            }
+            return null; // หาไม่เจอ หรือ Error
         }
 
         // Helper function เพื่อลดโค้ดซ้ำ

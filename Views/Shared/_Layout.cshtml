@@ -56,6 +56,14 @@
     @await RenderSectionAsync("Styles", required: false)
 </head>
 <body>
+    <div id="global-loader">
+        <div class="spinner-content">
+            <div class="spinner-border text-primary custom-spinner" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5 class="mt-2 text-primary">กรุณารอสักครู่...</h5>
+        </div>
+    </div>
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-classic border-bottom box-shadow mb-3">
             <div class="container-fluid">
@@ -133,6 +141,35 @@
                             </ul>
                         </li>
 
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Supply" asp-action="Index">
+                                <i class="fa fa-box-open"></i> เบิกวัสดุ
+                            </a>
+                        </li>
+
+                        @if (User.IsInRole(@"CRIMCAD\CIS_Admins") || User.IsInRole(@"CRIMCAD\Supply_Managers"))
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle text-dark" href="#" id="navbarDropdownSupply" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="fa fa-tasks"></i> จัดการพัสดุ
+                                </a>
+                                <ul class="dropdown-menu" aria-labelledby="navbarDropdownSupply">
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Supply" asp-action="ManageOrders">
+                                            <i class="fa fa-check-square"></i> อนุมัติใบเบิก
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" asp-controller="Supply" asp-action="StockIndex">
+                                            <i class="fa fa-boxes"></i> จัดการสต็อกสินค้า
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        }
+
+
                         @if (User.IsInRole(@"CRIMCAD\HR_Users") ||
                                                 User.IsInRole(@"CRIMCAD\CIS_Admins") ||
                                                 User.IsInRole(@"CRIMCAD\IT_Staff"))
@@ -154,6 +191,11 @@
                                         <li>
                                             <a class="dropdown-item" asp-controller="Hr" asp-action="Index">
                                                 <i class="fas fa-users text-info"></i> ทะเบียนรายชื่อพนักงาน
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Hr" asp-action="Import">
+                                                <i class="fas fa-file-import"></i> นำเข้า CSV
                                             </a>
                                         </li>
                                     }

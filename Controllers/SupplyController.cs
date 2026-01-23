@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 using CIS.Data;
 using CIS.Models;
 using Microsoft.AspNetCore.Authorization;
-using CIS.ViewModels; // <--- เพิ่มบรรทัดนี้
+using CIS.Services;
+using CIS.ViewModels;
 
 namespace CIS.Controllers
 {
@@ -16,20 +17,79 @@ namespace CIS.Controllers
     public class SupplyController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAdService _adService;
 
-        public SupplyController(ApplicationDbContext context)
+        public SupplyController(ApplicationDbContext context, IAdService adService)
         {
             _context = context;
+            _adService = adService;
+        }
+
+        // ==========================================
+        // HELPER METHOD: ดึงข้อมูลพนักงาน (ปรับปรุงใหม่: ตัด Domain ออก)
+        // ==========================================
+        private async Task<EmployeeProfile> GetCurrentEmployeeAsync()
+        {
+            // 1. รับค่าที่ Login เข้ามา (อาจจะเป็น "CRIMCAD\user01")
+            string fullUsername = User.Identity.Name ?? "";
+            string usernameOnly = fullUsername;
+
+            // 2. Logic ตัด Domain: ถ้ามี "\" ให้เอาเฉพาะส่วนหลัง
+            if (!string.IsNullOrEmpty(fullUsername) && fullUsername.Contains("\\"))
+            {
+                var parts = fullUsername.Split('\\');
+                if (parts.Length > 1)
+                {
+                    usernameOnly = parts[1]; // ได้ค่า "user01"
+                }
+            }
+
+            // 3. ใช้ usernameOnly (ที่ตัดแล้ว) ในการค้นหาใน DB
+            var employee = await _context.EmployeeProfiles
+                .FirstOrDefaultAsync(e => e.GeneratedUsername == usernameOnly);
+
+            // 4. ถ้าไม่เจอ -> Auto-Sync
+            if (employee == null)
+            {
+                try
+                {
+                    // เรียก Service ถาม AD (ส่ง usernameOnly ไปถาม)
+                    string citizenIdFromAd = _adService.GetCitizenIdByUsername(usernameOnly);
+
+                    if (!string.IsNullOrEmpty(citizenIdFromAd))
+                    {
+                        // เอาเลขบัตรมาหาใน DB เรา
+                        employee = await _context.EmployeeProfiles
+                            .FirstOrDefaultAsync(e => e.CitizenId == citizenIdFromAd);
+
+                        // 5. ถ้าเจอตัวจริงใน DB โดยใช้เลขบัตร -> ทำการ Link Username ให้ตรง Format
+                        if (employee != null)
+                        {
+                            // *** บันทึกเฉพาะ usernameOnly ตามโครงสร้าง DB ที่กำหนดไว้ ***
+                            employee.GeneratedUsername = usernameOnly;
+                            employee.IsSyncedToAd = true;
+                            employee.SyncDate = DateTime.Now;
+
+                            _context.Update(employee);
+                            await _context.SaveChangesAsync();
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // กรณีต่อ AD ไม่ได้ หรือมี Error อื่นๆ ให้ข้ามไป (employee เป็น null ต่อไป)
+                }
+            }
+
+            return employee;
         }
 
         // ==========================================
         // 1. ส่วนสำหรับ User (เบิกของ)
         // ==========================================
 
-        // GET: Supply/Index (หน้า Catalog เลือกของ)
         public async Task<IActionResult> Index()
         {
-            // ดึงเฉพาะของที่เปิดให้เบิก (IsActive) และเรียงตามชื่อ
             var items = await _context.SupplyItems
                 .Where(i => i.IsActive)
                 .OrderBy(i => i.ItemName)
@@ -38,7 +98,6 @@ namespace CIS.Controllers
             return View(items);
         }
 
-        // POST: Supply/CreateOrder (รับ Data JSON จากหน้าบ้าน)
         [HttpPost]
         public async Task<IActionResult> CreateOrder([FromBody] OrderRequestViewModel model)
         {
@@ -47,18 +106,14 @@ namespace CIS.Controllers
                 return Json(new { success = false, message = "ไม่พบรายการวัสดุที่เลือก" });
             }
 
-            // 1. หา EmployeeId ของคน Login
-            // (สมมติว่า GeneratedUsername เก็บ User AD เช่น "DOMAIN\User")
-            string currentUsername = User.Identity.Name;
-            var employee = await _context.EmployeeProfiles
-                .FirstOrDefaultAsync(e => e.GeneratedUsername == currentUsername);
+            // เรียกใช้ Helper ที่ปรับปรุงแล้ว
+            var employee = await GetCurrentEmployeeAsync();
 
             if (employee == null)
             {
-                return Json(new { success = false, message = "ไม่พบข้อมูลพนักงานของคุณในระบบ HR" });
+                return Json(new { success = false, message = "ไม่พบข้อมูลพนักงานของคุณในระบบ HR (กรุณาติดต่อเจ้าหน้าที่เพื่อตรวจสอบข้อมูล)" });
             }
 
-            // 2. สร้าง Header ใบเบิก
             var order = new SupplyOrder
             {
                 EmployeeId = employee.Id,
@@ -68,10 +123,8 @@ namespace CIS.Controllers
                 OrderItems = new List<SupplyOrderItem>()
             };
 
-            // 3. วนลูปสร้าง Detail
             foreach (var reqItem in model.Items)
             {
-                // ตรวจสอบสต็อกเบื้องต้น (Optional: อาจจะไม่เช็คก็ได้ถ้าอยากให้เบิกเกินไว้ก่อน)
                 var stockItem = await _context.SupplyItems.FindAsync(reqItem.ItemId);
                 if (stockItem != null)
                 {
@@ -95,12 +148,9 @@ namespace CIS.Controllers
             }
         }
 
-        // GET: Supply/MyHistory (ดูประวัติการเบิกของตัวเอง)
         public async Task<IActionResult> MyHistory()
         {
-            string currentUsername = User.Identity.Name;
-            var employee = await _context.EmployeeProfiles
-                .FirstOrDefaultAsync(e => e.GeneratedUsername == currentUsername);
+            var employee = await GetCurrentEmployeeAsync();
 
             if (employee == null) return View(new List<SupplyOrder>());
 
@@ -122,10 +172,10 @@ namespace CIS.Controllers
         public async Task<IActionResult> ManageOrders()
         {
             var orders = await _context.SupplyOrders
-                .Include(o => o.Requester) // ดึงชื่อคนเบิก
+                .Include(o => o.Requester)
                 .Include(o => o.OrderItems)
-                .ThenInclude(oi => oi.Item) // ดึงชื่อของ
-                .OrderBy(o => o.Status) // เอา Pending ขึ้นก่อน
+                .ThenInclude(oi => oi.Item)
+                .OrderBy(o => o.Status)
                 .ThenByDescending(o => o.OrderDate)
                 .ToListAsync();
 
@@ -149,26 +199,29 @@ namespace CIS.Controllers
                 return Json(new { success = false, message = "รายการนี้ถูกดำเนินการไปแล้ว" });
             }
 
-            // *** Logic ตัดสต็อก ***
+            // ตัดสต็อก
             foreach (var detail in order.OrderItems)
             {
                 var itemInDb = await _context.SupplyItems.FindAsync(detail.SupplyItemId);
                 if (itemInDb != null)
                 {
-                    // ถ้าของไม่พอ
                     if (itemInDb.StockQuantity < detail.Quantity)
                     {
                         return Json(new { success = false, message = $"สินค้า '{itemInDb.ItemName}' มีไม่พอ (เหลือ {itemInDb.StockQuantity})" });
                     }
-
-                    // ตัดของ
                     itemInDb.StockQuantity -= detail.Quantity;
                 }
             }
 
-            // Update Status
-            order.Status = SupplyStatus.Approved; // หรือ Completed ถ้าถือว่ารับเลย
-            order.ApprovedBy = User.Identity.Name;
+            // ในส่วนผู้อนุมัติ (Approver) ก็ควรตัด Domain ออกเหมือนกันถ้าต้องการเก็บแบบสั้น
+            string approverName = User.Identity.Name;
+            if (!string.IsNullOrEmpty(approverName) && approverName.Contains("\\"))
+            {
+                approverName = approverName.Split('\\')[1];
+            }
+
+            order.Status = SupplyStatus.Approved;
+            order.ApprovedBy = approverName; // บันทึกชื่อคนอนุมัติแบบสั้น
             order.ApprovedDate = DateTime.Now;
             order.AdminRemark = adminRemark;
 
@@ -184,8 +237,15 @@ namespace CIS.Controllers
             var order = await _context.SupplyOrders.FindAsync(id);
             if (order == null) return NotFound();
 
+            // ตัดชื่อคนไม่อนุมัติให้สั้นด้วย
+            string rejectorName = User.Identity.Name;
+            if (!string.IsNullOrEmpty(rejectorName) && rejectorName.Contains("\\"))
+            {
+                rejectorName = rejectorName.Split('\\')[1];
+            }
+
             order.Status = SupplyStatus.Rejected;
-            order.ApprovedBy = User.Identity.Name;
+            order.ApprovedBy = rejectorName;
             order.ApprovedDate = DateTime.Now;
             order.AdminRemark = adminRemark;
 
@@ -256,5 +316,4 @@ namespace CIS.Controllers
             return View(item);
         }
     }
-
 }

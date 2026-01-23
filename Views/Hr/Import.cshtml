@@ -1,0 +1,46 @@
+﻿@{
+    ViewData["Title"] = "Import ข้อมูลพนักงาน";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header bg-primary text-white">
+            <h4><i class="fas fa-file-csv"></i> นำเข้าข้อมูลพนักงานจาก CSV</h4>
+        </div>
+        <div class="card-body">
+
+            <div class="alert alert-info">
+                <strong>รูปแบบไฟล์ CSV ที่รองรับ:</strong><br />
+                Column 1: เลขบัตรประชาชน<br />
+                Column 2: คำนำหน้า<br />
+                Column 3: ชื่อ (ไทย)<br />
+                Column 4: นามสกุล (ไทย)<br />
+                Column 5: ชื่อ (อังกฤษ)<br />
+                Column 6: นามสกุล (อังกฤษ)<br />
+                Column 7: วันเกิด (yyyy-MM-dd)<br />
+                Column 8: เบอร์โทร<br />
+                Column 9: อีเมล<br />
+                Column 10: ชื่อตำแหน่ง<br />
+                Column 11: ชื่อฝ่าย (Division)<br />
+                Column 12: ชื่อแผนก (Section)<br />
+                Column 13: ระดับ (ใส่ตัวเลข: 0=Operational, 10=Supervisor, 99=Administrator)
+            </div>
+
+            <form asp-action="Import" enctype="multipart/form-data" method="post">
+                <div class="mb-3">
+                    <label class="form-label">เลือกไฟล์ .csv</label>
+                    <input type="file" name="file" class="form-control" accept=".csv" required />
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload"></i> เริ่ม Import ข้อมูล
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary">ยกเลิก</a>
+                </div>
+            </form>
+
+            <div class="text-danger mt-3" asp-validation-summary="All"></div>
+        </div>
+    </div>
+</div>

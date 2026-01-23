@@ -31,9 +31,13 @@ namespace CIS.Controllers
         // --- หน้า Dashboard ---
         public async Task<IActionResult> Index()
         {
-            return View(await _context.EmployeeProfiles
-                .OrderByDescending(e => e.CreatedDate)
-                .ToListAsync());
+            // ปรับปรุง: เรียงลำดับเอาคนที่ "ยังไม่ Sync"(IsSyncedToAd = false) ขึ้นก่อน
+            var employees = await _context.EmployeeProfiles
+                .OrderBy(e => e.IsSyncedToAd)       // false มาก่อน true
+                .ThenBy(e => e.Id)                  // เรียงตามลำดับที่สร้าง (หรือจะใช้ FirstNameTH ก็ได้)
+                .ToListAsync();
+
+            return View(employees);
         }
 
         // --- หน้ากรอกข้อมูล (Create) ---
@@ -303,6 +307,52 @@ namespace CIS.Controllers
         }
 
         // ==========================================
+        // ส่วนลบถาวร (Hard Delete) - เพิ่มใหม่
+        // ==========================================
+
+        // 1. GET: แสดงหน้ายืนยันการลบ
+        public async Task<IActionResult> HardDelete(int? id)
+        {
+            if (id == null) return NotFound();
+
+            // ค้นหาข้อมูลพนักงาน
+            var employee = await _context.EmployeeProfiles
+                .FirstOrDefaultAsync(m => m.Id == id);
+
+            if (employee == null) return NotFound();
+
+            // ส่งข้อมูลไปที่ View (HardDelete.cshtml)
+            return View(employee);
+        }
+
+        // 2. POST: ยืนยันการลบออกจาก Database จริงๆ
+        [HttpPost, ActionName("HardDelete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> HardDeleteConfirmed(int id)
+        {
+            var employee = await _context.EmployeeProfiles.FindAsync(id);
+            if (employee != null)
+            {
+                // สั่งลบออกจาก Database ถาวร
+                _context.EmployeeProfiles.Remove(employee);
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"ลบข้อมูลคุณ {employee.FirstNameTH} ออกจากระบบถาวรเรียบร้อยแล้ว";
+            }
+            else
+            {
+                TempData["ErrorMessage"] = "ไม่พบข้อมูลที่ต้องการลบ";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ==========================================
+        // ส่วน Import CSV (เพิ่มใหม่)
+        // ==========================================
+
+       
+        // ==========================================
         // Check AD Status (เหมือนเดิม)
         // ==========================================
         [HttpPost]
@@ -366,6 +416,164 @@ namespace CIS.Controllers
             catch (Exception ex)
             {
                 TempData["ErrorMessage"] = $"AD Error: {ex.Message}";
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ==========================================
+        // ส่วน Import CSV (ตรวจสอบให้แน่ใจว่ามีแค่ชุดนี้ชุดเดียวในไฟล์)
+        // ==========================================
+
+        [HttpGet]
+        public IActionResult Import()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Import(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                ModelState.AddModelError("", "กรุณาเลือกไฟล์ CSV");
+                return View();
+            }
+
+            int successCount = 0;
+            int errorCount = 0;
+            var errorList = new List<string>();
+
+            using (var stream = new StreamReader(file.OpenReadStream()))
+            {
+                // อ่าน Header ข้ามไป 1 บรรทัด
+                string headerLine = await stream.ReadLineAsync();
+
+                while (!stream.EndOfStream)
+                {
+                    string line = await stream.ReadLineAsync();
+                    if (string.IsNullOrWhiteSpace(line)) continue;
+
+                    try
+                    {
+                        var values = line.Split(',');
+
+                        var emp = new EmployeeProfile();
+
+                        // 1. Map ข้อมูล (ตรวจสอบ Index ให้ตรงกับไฟล์ CSV)
+                        emp.CitizenId = values[0].Trim();
+                        emp.Title = values[1].Trim();
+                        emp.FirstNameTH = values[2].Trim();
+                        emp.LastNameTH = values[3].Trim();
+                        emp.FirstNameEN = values[4].Trim();
+                        emp.LastNameEN = values[5].Trim();
+
+                        if (DateTime.TryParse(values[6], out DateTime dob)) emp.DateOfBirth = dob;
+
+                        emp.PhoneNumber = values[7].Trim();
+                        emp.PersonalEmail = values[8].Trim();
+                        emp.Position = values[9].Trim();
+                        emp.Division = values[10].Trim();
+                        emp.Section = values[11].Trim();
+
+                        // 2. แก้ไขจุดที่ Error: ใช้การ Cast int โดยตรง (ปลอดภัยกว่าเรียกชื่อ)
+                        // สมมติใน CSV หลักสุดท้ายเป็นเลข 0, 10, 99
+                        if (int.TryParse(values[12], out int posLevelVal))
+                        {
+                            emp.PositionLevel = (PositionLevel)posLevelVal;
+                        }
+                        else
+                        {
+                            // ถ้าแปลงไม่ได้ ให้เป็นค่าแรกสุดของ Enum (มักจะเป็น 0)
+                            emp.PositionLevel = 0;
+                        }
+
+                        // 3. สร้าง Username
+                        string nameBase = !string.IsNullOrEmpty(emp.FirstNameEN) ? emp.FirstNameEN : "user";
+                        string cleanName = nameBase.Trim().ToLower().Replace(" ", "");
+                        string cid = emp.CitizenId ?? "";
+                        string last6Digits = cid.Length >= 6 ? cid.Substring(cid.Length - 6) : "000000";
+                        emp.GeneratedUsername = $"{cleanName}.{last6Digits}";
+
+                        // 4. ค่า Default
+                        emp.CreatedDate = DateTime.Now;
+                        emp.IsSyncedToAd = false;
+                        emp.Status = EmployeeStatus.Active;
+
+                        _context.Add(emp);
+                        successCount++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errorCount++;
+                        errorList.Add($"Line Error: {ex.Message}");
+                    }
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            TempData["SuccessMessage"] = $"Import สำเร็จ {successCount} รายการ (ผิดพลาด {errorCount})";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // ==========================================
+        // ส่วน Sync ข้อมูล AD (เพิ่มใหม่)
+        // ==========================================
+
+        [HttpPost] // ใช้ Post เพื่อความปลอดภัย (ป้องกันการกดเล่นผ่าน URL)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SyncAllAdStatus()
+        {
+            int updatedCount = 0;
+            int errorCount = 0;
+
+            try
+            {
+                var employees = await _context.EmployeeProfiles.ToListAsync();
+
+                // ใช้การตั้งค่า Domain เดียวกับ AdminAdController
+                // หมายเหตุ: ถ้า IIS AppPool มีสิทธิ์อ่าน AD อยู่แล้ว ไม่ต้องใส่ user/pass ก็ได้
+                // แต่ถ้าอ่านไม่ได้ ให้ใส่ username/password ของ Service Account ลงไปใน Constructor
+                using (var context = new PrincipalContext(ContextType.Domain, "CRIMCAD"))
+                {
+                    foreach (var emp in employees)
+                    {
+                        if (string.IsNullOrEmpty(emp.GeneratedUsername)) continue;
+
+                        try
+                        {
+                            // ค้นหา User ใน AD
+                            var user = UserPrincipal.FindByIdentity(context, emp.GeneratedUsername);
+
+                            bool existsInAd = (user != null);
+                            bool isAdDisabled = (user != null && user.Enabled == false);
+
+                            // ตรวจสอบว่ามีการเปลี่ยนแปลงหรือไม่ (เพื่อไม่ต้อง Save ถ้ารอมูลเดิมตรงอยู่แล้ว)
+                            if (emp.IsSyncedToAd != existsInAd || emp.IsAdDisabled != isAdDisabled)
+                            {
+                                emp.IsSyncedToAd = existsInAd;
+                                emp.IsAdDisabled = isAdDisabled;
+                                _context.Update(emp);
+                                updatedCount++;
+                            }
+                        }
+                        catch
+                        {
+                            errorCount++; // นับจำนวนที่ error (เช่น user นี้หาไม่เจอหรือ connection หลุด)
+                        }
+                    }
+                }
+
+                // บันทึกการเปลี่ยนแปลงทั้งหมดทีเดียว
+                if (updatedCount > 0) await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"Sync ข้อมูลเสร็จสิ้น! อัปเดตสถานะ {updatedCount} รายการ" +
+                                             (errorCount > 0 ? $" (พบข้อผิดพลาด {errorCount} รายการ)" : "");
+            }
+            catch (Exception ex)
+            {
+                TempData["ErrorMessage"] = $"ไม่สามารถเชื่อมต่อ AD ได้: {ex.Message}";
             }
 
             return RedirectToAction(nameof(Index));

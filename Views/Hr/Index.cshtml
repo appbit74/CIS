@@ -10,6 +10,15 @@
         <a asp-action="Create" class="btn btn-primary">
             <i class="fas fa-plus-circle"></i> ลงทะเบียนพนักงานใหม่
         </a>
+        <a asp-action="Import" class="btn btn-primary">
+            <i class="fas fa-file-csv"></i> Import CSV
+        </a>
+
+        <form asp-action="SyncAllAdStatus" method="post" class="d-inline" id="syncForm">
+            <button type="submit" class="btn btn-warning text-dark" onclick="return confirmSync()">
+                <i class="fas fa-sync-alt"></i> ตรวจสอบสถานะ AD ทั้งหมด
+            </button>
+        </form>
     </div>
 
     @if (TempData["SuccessMessage"] != null)
@@ -22,7 +31,7 @@
 
     <div class="card shadow-sm">
         <div class="card-body">
-            <table class="table table-striped table-hover align-middle">
+            <table class="table table-striped table-hover align-middle" id="employeeTable">
                 <thead class="table-dark">
                     <tr>
                         <th>วันที่เริ่มงาน</th>
@@ -113,3 +122,49 @@
         </div>
     </div>
 </div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" />
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            // 2. แปลงตารางธรรมดาให้เป็น DataTables
+            $('#employeeTable').DataTable({
+                "language": {
+                    "search": "🔍 ค้นหา:",
+                    "lengthMenu": "แสดง _MENU_ รายการ",
+                    "info": "แสดง _START_ ถึง _END_ จากทั้งหมด _TOTAL_ รายการ",
+                    "paginate": {
+                        "first": "หน้าแรก",
+                        "last": "หน้าสุดท้าย",
+                        "next": "ถัดไป",
+                        "previous": "ก่อนหน้า"
+                    },
+                    "zeroRecords": "ไม่พบข้อมูลที่ค้นหา",
+                    "infoEmpty": "ไม่มีรายการ",
+                    "infoFiltered": "(กรองจากทั้งหมด _MAX_ รายการ)"
+                },
+                "order": [], // ปิดการเรียง Auto ของ JS (เพื่อให้ยึดตาม Controller ที่เอาแดงขึ้นก่อน)
+                "pageLength": 10, // จำนวนรายการต่อหน้า
+                "columnDefs": [
+                    { "orderable": false, "targets": -1 } // ห้ามเรียงคอลัมน์สุดท้าย (ปุ่มจัดการ)
+                ]
+            });
+        });
+
+        // 3. ฟังก์ชันเดิมสำหรับปุ่ม Sync
+        function confirmSync() {
+            if (confirm('ระบบจะทำการตรวจสอบพนักงานทุกคนกับ Active Directory อาจใช้เวลาสักครู่... ยืนยันหรือไม่?')) {
+                var btn = document.querySelector('#syncForm button');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังตรวจสอบ...';
+                btn.disabled = true;
+                document.getElementById('syncForm').submit();
+                return true;
+            }
+            return false;
+        }
+    </script>
+}

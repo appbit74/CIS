@@ -7,6 +7,8 @@
 <div class="container-fluid">
     <h2 class="mb-4 text-primary"><i class="fa fa-tasks"></i> รายการเบิกวัสดุ (รออนุมัติ)</h2>
 
+    @Html.AntiForgeryToken()
+
     <div class="card shadow-sm">
         <div class="card-body">
             <div class="table-responsive">
@@ -34,7 +36,6 @@
                                     <ul class="mb-0 ps-3 small">
                                         @foreach (var detail in order.OrderItems)
                                         {
-                                            // เช็คว่าของพอไหม
                                             bool isStockEnough = detail.Item.StockQuantity >= detail.Quantity;
                                             <li class="@(isStockEnough ? "" : "text-danger fw-bold")">
                                                 @detail.Item?.ItemName : @detail.Quantity @detail.Item?.Unit
@@ -150,37 +151,37 @@
             const type = document.getElementById('actionType').value;
             const remark = document.getElementById('adminRemark').value;
 
+            // 2. เพิ่มการดึงค่า Token จากหน้าเว็บ
+            const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
             // กำหนด URL ปลายทาง
             const url = type === 'Approve' ? '/Supply/ApproveOrder' : '/Supply/RejectOrder';
 
             try {
-                // ส่ง FormData เพื่อให้ Compatible กับ Controller ที่รับ Form
                 const formData = new FormData();
                 formData.append('id', id);
                 formData.append('adminRemark', remark);
 
-                // ใส่ Token ถ้าจำเป็น
-                // formData.append('__RequestVerificationToken', $('input[name="__RequestVerificationToken"]').val());
+                // 3. แนบ Token ไปกับ FormData (ชื่อต้องตรงกับที่ ASP.NET ต้องการ)
+                formData.append('__RequestVerificationToken', token);
 
                 const response = await fetch(url, {
                     method: 'POST',
-                    headers: {
-                        // 'RequestVerificationToken': ... (ถ้าเปิด AntiForgeryToken)
-                         // Content-Type จะถูกจัดการอัตโนมัติเมื่อใช้ FormData
-                    },
+                    // ไม่ต้องระบุ Content-Type เพราะ fetch จะจัดการ FormData ให้อัตโนมัติ (เป็น multipart/form-data)
                     body: formData
                 });
 
-                if (response.ok) { // Check HTTP Status 200-299
+                if (response.ok) {
                      const result = await response.json();
                      if (result.success) {
                          alert(result.message);
-                         location.reload(); // รีโหลดหน้าเพื่ออัปเดตสถานะ
+                         location.reload();
                      } else {
                          alert("เกิดข้อผิดพลาด: " + result.message);
                      }
                 } else {
-                    alert("Server Error: " + response.statusText);
+                    // ถ้ายัง error ให้แสดง Status Text
+                    alert("Server Error: " + response.status + " " + response.statusText);
                 }
 
             } catch (error) {

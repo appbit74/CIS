@@ -11,16 +11,36 @@ using System.Security.Principal;
 
 namespace CIS.Controllers
 {
-    // อนุญาตให้ทั้ง IT และ Admin ย่อย เข้าถึงได้
     [Authorize(Roles = @"CRIMCAD\CIS_Admins,CRIMCAD\HR_Users")]
 #pragma warning disable CA1416
     public class AdminAdController : Controller
     {
+        // ==========================================
+        // CONFIGURATION (ควรย้ายไป appsettings.json ในอนาคต)
+        // ==========================================
         private readonly string _domainName = "CRIMCAD";
         private readonly string _ouRootPath = "OU=Crimc Users,DC=CRIMC,DC=INTRA";
         private readonly string _defaultPassword = "P@ssw0rd";
 
-        // [HELPER] เช็คว่าเป็น "IT Super Admin" หรือไม่?
+        // *** USER ที่มีสิทธิ์จัดการ AD (Delegate Control แล้ว) ***
+        private readonly string _serviceUsername = "techno01"; // ใส่ชื่อ user service account
+        private readonly string _servicePassword = "P@ssw0rd"; // ใส่รหัสผ่าน
+        // ==========================================
+
+        // [HELPER 1] สร้าง Context แบบมีสิทธิ์ Admin (สำหรับจัดการ User/Group)
+        private PrincipalContext GetAdContext(string ouPath = null)
+        {
+            string container = string.IsNullOrEmpty(ouPath) ? _ouRootPath : ouPath;
+            return new PrincipalContext(ContextType.Domain, _domainName, container, _serviceUsername, _servicePassword);
+        }
+
+        // [HELPER 2] สร้าง DirectoryEntry แบบมีสิทธิ์ Admin (สำหรับจัดการ OU / LDAP Raw)
+        private DirectoryEntry GetDirectoryEntry(string ldapPath)
+        {
+            // ต้องระบุ User/Pass ตรงนี้ ไม่งั้นมันจะใช้สิทธิ์ IIS AppPool
+            return new DirectoryEntry($"LDAP://{ldapPath}", _serviceUsername, _servicePassword);
+        }
+
         private bool IsItSuperAdmin()
         {
             return User.IsInRole(@"CRIMCAD\CIS_Admins");
@@ -35,7 +55,8 @@ namespace CIS.Controllers
             var users = new List<AdUserViewModel>();
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName, _ouRootPath))
+                // ใช้ Helper เชื่อมต่อด้วย Service Account
+                using (var context = GetAdContext())
                 {
                     UserPrincipal userTemplate = new UserPrincipal(context);
                     PrincipalSearcher searcher = new PrincipalSearcher(userTemplate);
@@ -80,7 +101,8 @@ namespace CIS.Controllers
             }
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName, model.SelectedOU))
+                // ใช้ Helper ส่ง OU ที่เลือกเข้าไป
+                using (var context = GetAdContext(model.SelectedOU))
                 {
                     UserPrincipal user = new UserPrincipal(context)
                     {
@@ -94,7 +116,9 @@ namespace CIS.Controllers
                     };
                     user.SetPassword(_defaultPassword);
                     user.ExpirePasswordNow();
-                    user.Save();
+                    user.Save(); // บันทึกด้วยสิทธิ์ Service Account
+
+                    // อัปเดต Property พิเศษ (เช่น EmployeeID)
                     using (var de = user.GetUnderlyingObject() as DirectoryEntry)
                     {
                         if (de != null)
@@ -121,13 +145,12 @@ namespace CIS.Controllers
             if (string.IsNullOrEmpty(id)) return NotFound();
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext()) // ค้นหาจาก Root โดยใช้สิทธิ์ Admin
                 {
                     var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, id);
                     if (user == null) return NotFound();
 
                     string currentOuDn = "";
-                    // ใช้ตัวแปรชั่วคราวเพื่ออ่านค่า OU โดยไม่ใช้ using(...) กับ user object
                     var de = user.GetUnderlyingObject() as DirectoryEntry;
                     if (de != null && de.Parent != null)
                     {
@@ -144,7 +167,6 @@ namespace CIS.Controllers
                         SelectedOU = currentOuDn
                     };
 
-                    // *** เช็คสิทธิ์: โหลดข้อมูล Group/OU เฉพาะ IT Super Admin ***
                     if (IsItSuperAdmin())
                     {
                         model.OUList = GetOUs(_ouRootPath);
@@ -187,12 +209,12 @@ namespace CIS.Controllers
 
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext()) // ใช้ Helper
                 {
                     var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, model.Username);
                     if (user == null) return NotFound();
 
-                    // 1. [ย้าย OU] (ทำเฉพาะ IT Super Admin)
+                    // 1. [ย้าย OU]
                     if (IsItSuperAdmin())
                     {
                         var userEntry = user.GetUnderlyingObject() as DirectoryEntry;
@@ -201,7 +223,8 @@ namespace CIS.Controllers
                             string currentParentDn = userEntry.Parent.Properties["distinguishedName"].Value.ToString() ?? "";
                             if (!string.Equals(currentParentDn, model.SelectedOU, StringComparison.OrdinalIgnoreCase))
                             {
-                                using (var targetOuEntry = new DirectoryEntry($"LDAP://{model.SelectedOU}"))
+                                // ใช้ Helper GetDirectoryEntry เพื่อให้มีสิทธิ์ย้าย
+                                using (var targetOuEntry = GetDirectoryEntry(model.SelectedOU))
                                 {
                                     userEntry.MoveTo(targetOuEntry);
                                 }
@@ -209,15 +232,15 @@ namespace CIS.Controllers
                         }
                     }
 
-                    // 2. [แก้ไข Properties] (ทำได้ทุกคน)
+                    // 2. [แก้ไข Properties]
                     user.GivenName = model.FirstName;
                     user.Surname = model.LastName;
                     user.DisplayName = $"{model.FirstName} {model.LastName}";
                     user.EmailAddress = model.Email;
                     user.Enabled = model.IsEnabled;
-                    user.Save();
+                    user.Save(); // Save ด้วยสิทธิ์ Admin
 
-                    // 3. [อัปเดต Group] (ทำเฉพาะ IT Super Admin)
+                    // 3. [อัปเดต Group]
                     if (IsItSuperAdmin() && model.GroupMemberships != null)
                     {
                         var currentGroupNames = user.GetGroups().Select(g => g.SamAccountName).ToHashSet();
@@ -256,7 +279,7 @@ namespace CIS.Controllers
         }
 
         // ==========================================
-        // 2. จัดการกลุ่ม (GROUP MANAGEMENT) - (เอากลับมาแล้ว!)
+        // 2. จัดการกลุ่ม (GROUP MANAGEMENT)
         // ==========================================
 
         public IActionResult GroupList()
@@ -264,7 +287,7 @@ namespace CIS.Controllers
             var groups = new List<AdGroupViewModel>();
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName, _ouRootPath))
+                using (var context = GetAdContext()) // ใช้ Helper
                 {
                     GroupPrincipal groupTemplate = new GroupPrincipal(context);
                     PrincipalSearcher searcher = new PrincipalSearcher(groupTemplate);
@@ -310,7 +333,8 @@ namespace CIS.Controllers
 
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName, model.SelectedOU))
+                // ใช้ Helper ส่ง OU ที่เลือก
+                using (var context = GetAdContext(model.SelectedOU))
                 {
                     GroupPrincipal newGroup = new GroupPrincipal(context)
                     {
@@ -340,7 +364,7 @@ namespace CIS.Controllers
 
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext()) // ใช้ Helper
                 {
                     var group = GroupPrincipal.FindByIdentity(context, id);
                     if (group == null) return NotFound();
@@ -379,7 +403,7 @@ namespace CIS.Controllers
         {
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext())
                 {
                     var group = GroupPrincipal.FindByIdentity(context, model.GroupName);
                     var user = UserPrincipal.FindByIdentity(context, model.NewUsernameToAdd);
@@ -419,7 +443,7 @@ namespace CIS.Controllers
                 if (groupName.Equals("Domain Users", StringComparison.OrdinalIgnoreCase))
                     return Json(new { success = false, message = "ห้ามยุ่งกับ Domain Users!" });
 
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext())
                 {
                     var group = GroupPrincipal.FindByIdentity(context, groupName);
                     var user = UserPrincipal.FindByIdentity(context, username);
@@ -440,7 +464,7 @@ namespace CIS.Controllers
         }
 
         // ==========================================
-        // 3. API & HELPER METHODS
+        // 3. API & HELPER METHODS (Actions)
         // ==========================================
 
         [HttpPost]
@@ -450,7 +474,7 @@ namespace CIS.Controllers
             if (string.IsNullOrEmpty(id)) return Json(new { success = false, message = "ไม่พบ ID" });
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext())
                 {
                     var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, id);
                     if (user == null) return Json(new { success = false, message = "ไม่พบผู้ใช้" });
@@ -473,11 +497,11 @@ namespace CIS.Controllers
             if (string.IsNullOrEmpty(id)) return Json(new { success = false, message = "ไม่พบ ID" });
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext())
                 {
                     var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, id);
                     if (user == null) return Json(new { success = false, message = "ไม่พบผู้ใช้" });
-                    user.Delete();
+                    user.Delete(); // ใช้สิทธิ์ Admin ลบ
                 }
                 return Json(new { success = true, message = $"ลบผู้ใช้ {id} สำเร็จ!" });
             }
@@ -493,7 +517,7 @@ namespace CIS.Controllers
         {
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext())
                 {
                     var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, id);
                     if (user != null && user.IsAccountLockedOut())
@@ -517,16 +541,15 @@ namespace CIS.Controllers
             if (string.IsNullOrEmpty(id)) return Json(new { success = false, message = "ไม่พบ ID" });
             try
             {
-                using (var context = new PrincipalContext(ContextType.Domain, _domainName))
+                using (var context = GetAdContext())
                 {
                     var user = UserPrincipal.FindByIdentity(context, IdentityType.SamAccountName, id);
                     if (user == null) return Json(new { success = false, message = "ไม่พบผู้ใช้" });
 
-                    // ปรับปรุง: เช็คค่า Null
                     if (user.Enabled.HasValue) user.Enabled = !user.Enabled.Value;
                     else user.Enabled = true;
 
-                    user.Save();
+                    user.Save(); // บันทึกสถานะใหม่
                     string actionText = (user.Enabled == true) ? "เปิดใช้งาน" : "ระงับ";
                     return Json(new { success = true, message = $"{actionText}บัญชี {id} สำเร็จ!" });
                 }
@@ -543,7 +566,8 @@ namespace CIS.Controllers
         {
             try
             {
-                using (var parentEntry = new DirectoryEntry($"LDAP://{_ouRootPath}"))
+                // ใช้ Helper DirectoryEntry เพื่อให้มีสิทธิ์สร้าง OU
+                using (var parentEntry = GetDirectoryEntry(_ouRootPath))
                 {
                     DirectoryEntry newOu = parentEntry.Children.Add($"OU={ouName}", "OrganizationalUnit");
                     newOu.Properties["description"].Value = "สร้างโดย CIS Web App";
@@ -564,7 +588,8 @@ namespace CIS.Controllers
             var ouList = new List<SelectListItem>();
             try
             {
-                using (var rootEntry = new DirectoryEntry($"LDAP://{rootPath}"))
+                // ใช้ Helper DirectoryEntry เพื่อให้มีสิทธิ์อ่าน LDAP path
+                using (var rootEntry = GetDirectoryEntry(rootPath))
                 {
                     using (var searcher = new DirectorySearcher(rootEntry))
                     {
